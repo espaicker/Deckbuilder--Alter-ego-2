@@ -1,0 +1,8 @@
+node_modules
+dist
+.DS_Store
+*.log
+server/deckbuilder.db
+server/.jwt-secret
+server/.admin-credentials.json
+.env

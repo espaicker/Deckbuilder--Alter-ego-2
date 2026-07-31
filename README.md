@@ -2,7 +2,7 @@
 
 Deck builder web para o card game. Front-end em React + Vite, com um
 backend leve (Express + SQLite via `sql.js`, sem compilação nativa) para
-contas de jogador, comunidade de decks publicados e painel admin. Os
+contas de jogador, login Google OAuth, comunidade de decks publicados e painel admin. Os
 decks montados individualmente continuam funcionando 100% offline, salvos
 no `localStorage` do navegador — o backend só entra em cena se você
 quiser publicar um deck na comunidade ou acessar o painel admin.
@@ -54,9 +54,16 @@ credenciais que **nunca ficam expostas em texto puro no código**:
 - O segredo usado para assinar os logins (JWT) segue a mesma lógica: por
   padrão é gerado automaticamente em `server/.jwt-secret`, ou você pode
   fixar via `JWT_SECRET` no ambiente.
+- Existem dois níveis administrativos:
+  - `superadmin`: login principal via `ADMIN_USERNAME`/`ADMIN_PASSWORD`;
+    consegue promover e rebaixar outros usuários para admin.
+  - `admin`: acessa o painel e gerencia usuários, decks e cartas, mas não
+    altera permissões administrativas.
+- O login Google fica ativo quando `GOOGLE_CLIENT_ID` está configurado.
+  O backend valida o token do Google antes de criar ou atualizar a conta.
 
-**Ao publicar o site de verdade**, configure `ADMIN_PASSWORD` e
-`JWT_SECRET` como variáveis de ambiente no painel do seu serviço de
+**Ao publicar o site de verdade**, configure `ADMIN_PASSWORD`,
+`JWT_SECRET` e `GOOGLE_CLIENT_ID` como variáveis de ambiente no painel do seu serviço de
 hospedagem (Render, Railway, etc.) em vez de depender dos arquivos
 gerados localmente.
 
@@ -104,6 +111,9 @@ servidor próprio (Vercel, Netlify ou GitHub Pages, por exemplo).
 - **Buscar Cartas** — catálogo com todas as cartas do jogo, filtrável por
   cor/tipo/subtipo e busca por nome, disponível mesmo antes de escolher um
   Alter Ego. Útil pra conferir o texto e a arte de qualquer carta.
+- **Home com estética de HQ** — a página inicial usa a identidade visual
+  do site Alter Ego: tipografia Bangers/Oswald, bordas grossas, sombras
+  duras, cards inclinados e artes de lore/notícias/artigos.
 - **Escolha de Alter Ego** — define as cores permitidas no deck. Clique no
   texto de efeito expande/retrai a descrição completa.
 - **Montagem do deck e do monte de Drops** — respeitando cor, cópias

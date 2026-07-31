@@ -1,7 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { JWT_SECRET, JWT_EXPIRES_IN } from "../middleware/auth.js";
+import { requireAdmin, requireSuperAdmin, signUserToken } from "../middleware/auth.js";
 import { getAdminCredentials } from "../secrets.js";
 import { adminLoginLimiter } from "../middleware/rateLimit.js";
 
@@ -32,13 +31,10 @@ router.post("/login", adminLoginLimiter, async (req, res) => {
       return res.status(401).json({ error: "Credenciais inválidas." });
     }
 
-    const token = jwt.sign(
-      { sub: 0, username: ADMIN_USERNAME, role: "admin" },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
+    const user = { id: 0, username: ADMIN_USERNAME, role: "superadmin" };
+    const token = signUserToken(user);
 
-    res.json({ token, user: { id: 0, username: ADMIN_USERNAME, role: "admin" } });
+    res.json({ token, user });
   } catch (err) {
     console.error("[admin] login error:", err);
     res.status(500).json({ error: "Erro interno." });
@@ -46,32 +42,12 @@ router.post("/login", adminLoginLimiter, async (req, res) => {
 });
 
 /**
- * Middleware que exige role admin no token
- */
-function requireAdmin(req, res, next) {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Token não fornecido." });
-  }
-  try {
-    const payload = jwt.verify(header.slice(7), JWT_SECRET);
-    if (payload.role !== "admin") {
-      return res.status(403).json({ error: "Acesso restrito a administradores." });
-    }
-    req.admin = { username: payload.username };
-    next();
-  } catch {
-    return res.status(401).json({ error: "Token inválido ou expirado." });
-  }
-}
-
-/**
  * GET /api/admin/users — Lista todos os usuários
  */
 router.get("/users", requireAdmin, (req, res) => {
   try {
     const users = req.db.prepare(`
-      SELECT id, username, created_at FROM users ORDER BY id DESC
+      SELECT id, username, email, avatar_url, role, created_at FROM users ORDER BY id DESC
     `).all();
     res.json(users);
   } catch (err) {
@@ -89,9 +65,12 @@ router.delete("/users/:id", requireAdmin, (req, res) => {
     if (!Number.isFinite(userId)) {
       return res.status(400).json({ error: "ID inválido." });
     }
-    const user = req.db.prepare("SELECT id, username FROM users WHERE id = ?").get(userId);
+    const user = req.db.prepare("SELECT id, username, role FROM users WHERE id = ?").get(userId);
     if (!user) {
       return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+    if (["admin", "superadmin"].includes(user.role) && req.user.role !== "superadmin") {
+      return res.status(403).json({ error: "Apenas o administrador principal pode remover administradores." });
     }
     // Remove decks first, then user
     req.db.prepare("DELETE FROM community_decks WHERE user_id = ?").run(userId);
@@ -100,6 +79,39 @@ router.delete("/users/:id", requireAdmin, (req, res) => {
   } catch (err) {
     console.error("[admin] delete user error:", err);
     res.status(500).json({ error: "Erro ao remover usuário." });
+  }
+});
+
+/**
+ * PUT /api/admin/users/:id/role — Promove/rebaixa usuários.
+ * Só o superadmin pode alterar permissões administrativas.
+ */
+router.put("/users/:id/role", requireSuperAdmin, (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { role } = req.body || {};
+    const allowedRoles = new Set(["player", "admin"]);
+    if (!Number.isFinite(userId)) {
+      return res.status(400).json({ error: "ID inválido." });
+    }
+    if (!allowedRoles.has(role)) {
+      return res.status(400).json({ error: "Cargo inválido. Use player ou admin." });
+    }
+
+    const user = req.db.prepare("SELECT id, username, role FROM users WHERE id = ?").get(userId);
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+    if (user.role === "superadmin") {
+      return res.status(403).json({ error: "O administrador principal não pode ser alterado por este painel." });
+    }
+
+    req.db.prepare("UPDATE users SET role = ? WHERE id = ?").run(role, userId);
+    const updated = req.db.prepare("SELECT id, username, email, avatar_url, role, created_at FROM users WHERE id = ?").get(userId);
+    res.json({ message: `Usuário "${updated.username}" atualizado para ${role}.`, user: updated });
+  } catch (err) {
+    console.error("[admin] update role error:", err);
+    res.status(500).json({ error: "Erro ao atualizar permissão." });
   }
 });
 

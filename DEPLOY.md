@@ -57,9 +57,12 @@ configuração inteira — o Render lê ele sozinho:
 3. O Render vai detectar o `render.yaml` e mostrar o serviço configurado
    (build command, start command, variáveis de ambiente já setadas).
 4. Quando pedir o valor de `ADMIN_PASSWORD`, digite a senha que você quer
-   usar pra entrar no painel admin (escolha algo forte — essa é a senha
-   real que vai proteger a exclusão de usuários e decks).
-5. Clique em **Apply** / **Create**.
+   usar pra entrar como admin principal (`superadmin`). Esse usuário é o
+   único que promove ou remove outros admins.
+5. Quando pedir `GOOGLE_CLIENT_ID`, cole o Client ID criado no Google
+   Cloud Console para o OAuth. No Google, adicione a URL do Render como
+   origem JavaScript autorizada.
+6. Clique em **Apply** / **Create**.
 
 O primeiro deploy demora alguns minutos (instala dependências e roda o
 build do front-end). Quando terminar, o Render te dá uma URL tipo
@@ -69,18 +72,20 @@ build do front-end). Quando terminar, o Render te dá uma URL tipo
 **Web Service** manualmente com:
 - **Build Command**: `npm install && npm run build`
 - **Start Command**: `npm start`
-- **Variáveis de ambiente**: adicione `ADMIN_PASSWORD` (sua senha) e
+- **Variáveis de ambiente**: adicione `ADMIN_PASSWORD` (sua senha),
   `JWT_SECRET` (qualquer texto aleatório longo, ex: gere um em
   [passwordsgenerator.net](https://passwordsgenerator.net) com uns 40+
-  caracteres).
+  caracteres) e `GOOGLE_CLIENT_ID` se quiser habilitar login Google.
 
 ## Passo 4 — Testar
 
 Acesse a URL que o Render deu. Confira:
 - A página inicial carrega e mostra as cartas.
 - `/admin` abre a tela de login do painel admin.
-- Logar como admin com o usuário `admin` e a senha que você definiu no
-  Passo 3 funciona.
+- Logar como admin principal com o usuário `admin` e a senha que você
+  definiu no Passo 3 funciona.
+- O botão de Google aparece no modal de login quando `GOOGLE_CLIENT_ID`
+  está configurado.
 - `/api/health` retorna `{"status":"ok",...}`.
 
 Se a primeira visita demorar uns 30-60 segundos pra carregar, é normal —

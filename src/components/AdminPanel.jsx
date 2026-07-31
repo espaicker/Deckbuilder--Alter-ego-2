@@ -99,21 +99,42 @@ function StatsPanel({ stats }) {
   );
 }
 
-function UsersTable({ users, onDelete, loading }) {
+function roleLabel(role) {
+  if (role === "superadmin") return "Admin principal";
+  if (role === "admin") return "Admin";
+  return "Jogador";
+}
+
+function UsersTable({ users, onDelete, onRoleChange, loading, canManageAdmins }) {
   return (
     <div className="ab-admin-table-wrap">
       <h3 className="ab-sidebar-group-title">Usuários ({users.length})</h3>
       <table className="ab-admin-table">
         <thead>
-          <tr><th>ID</th><th>Username</th><th>Criado em</th><th>Ações</th></tr>
+          <tr><th>ID</th><th>Username</th><th>Email</th><th>Nível</th><th>Criado em</th><th>Ações</th></tr>
         </thead>
         <tbody>
           {users.map((u) => (
             <tr key={u.id}>
               <td>{u.id}</td>
               <td>{u.username}</td>
+              <td>{u.email || "—"}</td>
+              <td>
+                <span className={`ab-role-badge ab-role-${u.role || "player"}`}>
+                  {roleLabel(u.role)}
+                </span>
+              </td>
               <td>{u.created_at}</td>
               <td>
+                {canManageAdmins && u.role !== "superadmin" && (
+                  <button
+                    className="ab-btn ab-btn-ghost ab-btn-sm"
+                    onClick={() => onRoleChange(u.id, u.role === "admin" ? "player" : "admin")}
+                    disabled={loading}
+                  >
+                    {u.role === "admin" ? "Remover admin" : "Tornar admin"}
+                  </button>
+                )}
                 <button
                   className="ab-btn ab-btn-ghost ab-btn-sm ab-btn-danger"
                   onClick={() => onDelete(u.id, u.username)}
@@ -124,9 +145,12 @@ function UsersTable({ users, onDelete, loading }) {
               </td>
             </tr>
           ))}
-          {users.length === 0 && <tr><td colSpan={4}>Nenhum usuário.</td></tr>}
+          {users.length === 0 && <tr><td colSpan={6}>Nenhum usuário.</td></tr>}
         </tbody>
       </table>
+      {!canManageAdmins && (
+        <p className="ab-admin-note">Somente o admin principal pode promover ou remover admins.</p>
+      )}
     </div>
   );
 }
@@ -445,8 +469,8 @@ function CardForm({ meta, card, onClose, onSaved, flash }) {
   );
 }
 
-export default function AdminPanel({ embedded = false }) {
-  const [admin, setAdmin] = useState(embedded ? { username: "admin" } : null);
+export default function AdminPanel({ embedded = false, currentUser = null }) {
+  const [admin, setAdmin] = useState(embedded ? currentUser : null);
   const [tab, setTab] = useState("stats");
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
@@ -455,14 +479,23 @@ export default function AdminPanel({ embedded = false }) {
   const [cardMeta, setCardMeta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const effectiveAdmin = currentUser || admin;
+  const canManageAdmins = effectiveAdmin?.role === "superadmin";
 
   // Check existing token
   useEffect(() => {
     const token = getAdminToken();
+    const savedUser = (() => {
+      try {
+        return JSON.parse(localStorage.getItem("deckbuilder:auth_user") || "null");
+      } catch {
+        return null;
+      }
+    })();
     if (token) {
       adminReq("GET", "/stats")
         .then((data) => {
-          setAdmin({ username: "admin" });
+          setAdmin(savedUser?.role ? savedUser : { username: "admin", role: "superadmin" });
           setStats(data);
         })
         .catch(() => {
@@ -526,6 +559,17 @@ export default function AdminPanel({ embedded = false }) {
     setLoading(false);
   }
 
+  async function changeUserRole(id, role) {
+    setLoading(true);
+    try {
+      await adminReq("PUT", `/users/${id}/role`, { role });
+      flash(role === "admin" ? "Usuário promovido a admin." : "Permissão de admin removida.");
+      loadUsers();
+      loadStats();
+    } catch (err) { flash(err.message); }
+    setLoading(false);
+  }
+
   async function deleteDeck(id, name) {
     if (!confirm(`Remover deck "${name}"?`)) return;
     setLoading(true);
@@ -573,7 +617,7 @@ export default function AdminPanel({ embedded = false }) {
       {!embedded && (
         <header className="ab-admin-header">
           <h1 className="ab-logo-title">PAINEL ADMIN</h1>
-          <span className="ab-hud-username">Logado como admin</span>
+          <span className="ab-hud-username">Logado como {roleLabel(effectiveAdmin?.role)}</span>
           <button className="ab-btn ab-btn-ghost ab-btn-sm" onClick={handleLogout}>Sair</button>
         </header>
       )}
@@ -587,7 +631,15 @@ export default function AdminPanel({ embedded = false }) {
 
       <main className="ab-main ab-admin-main">
         {tab === "stats" && <StatsPanel stats={stats} />}
-        {tab === "users" && <UsersTable users={users} onDelete={deleteUser} loading={loading} />}
+        {tab === "users" && (
+          <UsersTable
+            users={users}
+            onDelete={deleteUser}
+            onRoleChange={changeUserRole}
+            loading={loading}
+            canManageAdmins={canManageAdmins}
+          />
+        )}
         {tab === "decks" && <DecksTable decks={decks} onDelete={deleteDeck} loading={loading} />}
         {tab === "cards" && <CardManager cards={cards} meta={cardMeta} onReload={loadCards} flash={flash} />}
       </main>

@@ -57,6 +57,11 @@ export const api = {
   login: (username, password) =>
     request("POST", "/auth/login", { username, password }),
 
+  getGoogleConfig: () => request("GET", "/auth/google/config"),
+
+  loginWithGoogle: (credential) =>
+    request("POST", "/auth/google", { credential }),
+
   // Decks
   getCommunityDecks: () => request("GET", "/decks/community"),
 

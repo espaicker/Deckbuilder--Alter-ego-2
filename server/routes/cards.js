@@ -2,31 +2,13 @@ import { Router } from "express";
 import { readFileSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../middleware/auth.js";
+import { requireAdmin } from "../middleware/auth.js";
 
 const router = Router();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const CARDS_JSON_PATH = join(__dirname, "../../src/data/modelo_cartas.json");
-
-function requireAdmin(req, res, next) {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Token não fornecido." });
-  }
-  try {
-    const payload = jwt.verify(header.slice(7), JWT_SECRET);
-    if (payload.role !== "admin") {
-      return res.status(403).json({ error: "Acesso restrito a administradores." });
-    }
-    req.admin = { username: payload.username };
-    next();
-  } catch {
-    return res.status(401).json({ error: "Token inválido ou expirado." });
-  }
-}
 
 function readCardsData() {
   return JSON.parse(readFileSync(CARDS_JSON_PATH, "utf-8"));

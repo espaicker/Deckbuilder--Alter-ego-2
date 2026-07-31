@@ -1,14 +1,79 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../lib/api.js";
 
 /**
  * Modal de login/registro.
  */
-export default function AuthModal({ onClose, onLogin, onRegister }) {
+export default function AuthModal({ onClose, onLogin, onRegister, onGoogleLogin }) {
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [googleReady, setGoogleReady] = useState(false);
+  const googleButtonRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getGoogleConfig()
+      .then((config) => {
+        if (!cancelled) setGoogleClientId(config.clientId || "");
+      })
+      .catch(() => {
+        if (!cancelled) setGoogleClientId("");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!googleClientId) return undefined;
+    if (window.google?.accounts?.id) {
+      setGoogleReady(true);
+      return undefined;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setGoogleReady(true);
+    script.onerror = () => setError("Não foi possível carregar o login do Google.");
+    document.head.appendChild(script);
+
+    return () => {
+      script.remove();
+    };
+  }, [googleClientId]);
+
+  useEffect(() => {
+    if (!googleReady || !googleClientId || !googleButtonRef.current || !window.google?.accounts?.id) return;
+    googleButtonRef.current.innerHTML = "";
+    window.google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: async (response) => {
+        setError(null);
+        setSubmitting(true);
+        try {
+          await onGoogleLogin(response.credential);
+          onClose();
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setSubmitting(false);
+        }
+      },
+    });
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: "filled_black",
+      size: "large",
+      text: mode === "login" ? "signin_with" : "signup_with",
+      shape: "rectangular",
+      width: 320,
+    });
+  }, [googleReady, googleClientId, mode, onClose, onGoogleLogin]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -44,6 +109,16 @@ export default function AuthModal({ onClose, onLogin, onRegister }) {
         <h2 className="ab-auth-title">
           {mode === "login" ? "Entrar" : "Criar conta"}
         </h2>
+
+        <div className="ab-google-login">
+          {googleClientId ? (
+            <div ref={googleButtonRef} className="ab-google-button" />
+          ) : (
+            <span className="ab-google-unavailable">Login Google não configurado.</span>
+          )}
+        </div>
+
+        <div className="ab-auth-divider">ou</div>
 
         <form className="ab-auth-form" onSubmit={handleSubmit}>
           <label className="ab-auth-label">

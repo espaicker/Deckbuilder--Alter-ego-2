@@ -39,6 +39,14 @@ function highlightKeywords(text, keywords) {
   );
 }
 
+function normalizeSearchTerm(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 function AtomIcon({ size = 14, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6">
@@ -250,7 +258,7 @@ export default function DeckBuilder() {
   const [catalogType, setCatalogType] = useState("Todos");
   const [catalogSubtype, setCatalogSubtype] = useState("Todos");
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { user, login, register, logout } = useAuth();
+  const { user, login, register, loginWithGoogle, logout } = useAuth();
   const cardIndex = useMemo(() => createCardIndex(CARD_DATA.cards), []);
 
   const alterEgos = useMemo(
@@ -506,14 +514,25 @@ export default function DeckBuilder() {
   }, [catalogType]);
 
   const filteredCatalog = useMemo(() => {
+    const normalizedCatalogSearch = normalizeSearchTerm(catalogSearch);
+
     return CARD_DATA.cards.filter((c) => {
       if (catalogColor !== "Todas" && !c.colors.includes(catalogColor)) return false;
       if (catalogType !== "Todos" && c.type !== catalogType) return false;
       if (catalogSubtype !== "Todos" && c.subtype !== catalogSubtype) return false;
-      if (catalogSearch && !c.name.toLowerCase().includes(catalogSearch.toLowerCase())) return false;
+      if (normalizedCatalogSearch && !normalizeSearchTerm(c.name).includes(normalizedCatalogSearch)) return false;
       return true;
     });
   }, [catalogColor, catalogType, catalogSubtype, catalogSearch]);
+
+  const homeSearchTerm = normalizeSearchTerm(catalogSearch);
+  const homeSearchSuggestions = useMemo(() => {
+    if (!homeSearchTerm) return [];
+
+    return CARD_DATA.cards
+      .filter((card) => normalizeSearchTerm(card.name).startsWith(homeSearchTerm))
+      .slice(0, 3);
+  }, [homeSearchTerm]);
 
   function printProxyPdf() {
     if (!alterEgo) return;
@@ -657,6 +676,7 @@ export default function DeckBuilder() {
 
   const accent = allowedColors[0] ? COLOR_HEX[allowedColors[0]] : "#C9CDD6";
   const accent2 = allowedColors[1] ? COLOR_HEX[allowedColors[1]] : accent;
+  const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
   return (
     <div
@@ -672,6 +692,7 @@ export default function DeckBuilder() {
           onClose={() => setShowAuthModal(false)}
           onLogin={login}
           onRegister={register}
+          onGoogleLogin={loginWithGoogle}
         />
       )}
 
@@ -679,11 +700,11 @@ export default function DeckBuilder() {
         <div className="ab-hud-top">
           <div className="ab-logo">
             <span className="ab-logo-mark">
-              <AtomIcon size={20} color="var(--accent)" />
+              <AtomIcon size={20} color="var(--brand-red)" />
             </span>
             <div>
-              <div className="ab-logo-title">FORJA DE ALTER EGOS</div>
-              <div className="ab-logo-sub">construtor de deck</div>
+              <div className="ab-logo-title">Alter Ego</div>
+              <div className="ab-logo-sub">deckbuilder e comunidade</div>
             </div>
           </div>
 
@@ -763,7 +784,7 @@ export default function DeckBuilder() {
               {label}
             </button>
           ))}
-          {user?.role === "admin" && (
+          {isAdmin && (
             <button
               className={`ab-tab ab-tab-admin ${tab === "admin" ? "is-active" : ""}`}
               onClick={() => setTab("admin")}
@@ -778,36 +799,86 @@ export default function DeckBuilder() {
         {tab === "inicio" && (
           <section className="ab-homepage">
             <div className="ab-homepage-content">
-              <span className="ab-homepage-icon">
-                <AtomIcon size={40} color="var(--accent)" />
-              </span>
-              <h1 className="ab-homepage-title">ALTER EGO</h1>
-              <p className="ab-homepage-subtitle">Busque cartas ou inicie a criação de um deck.</p>
-              <div className="ab-homepage-search">
-                <input
-                  className="ab-input ab-homepage-input"
-                  placeholder="Pesquisar carta..."
-                  value={catalogSearch}
-                  onChange={(e) => setCatalogSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && catalogSearch.trim()) {
-                      setTab("catalogo");
-                    }
-                  }}
-                />
-                <button
-                  className="ab-btn ab-btn-accent ab-homepage-btn"
-                  onClick={() => setTab("alterego")}
-                >
-                  CRIAR DECK
-                </button>
+              <div className="ab-home-hero">
+                <div className="ab-home-copy">
+                  <span className="ab-home-kicker">Card game tático</span>
+                  <h1 className="ab-homepage-title">ALTER EGO</h1>
+                  <p className="ab-homepage-subtitle">
+                    Monte decks, explore cartas e publique listas na comunidade.
+                  </p>
+                  <div className="ab-homepage-search">
+                    <div className="ab-homepage-searchbox">
+                      <input
+                        className="ab-input ab-homepage-input"
+                        placeholder="Pesquisar carta..."
+                        value={catalogSearch}
+                        aria-label="Pesquisar carta"
+                        aria-expanded={homeSearchSuggestions.length > 0}
+                        onChange={(e) => setCatalogSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && catalogSearch.trim()) {
+                            setTab("catalogo");
+                          }
+                        }}
+                      />
+                      {homeSearchSuggestions.length > 0 && (
+                        <div className="ab-homepage-suggestions" role="listbox" aria-label="Sugestões de cartas">
+                          {homeSearchSuggestions.map((card) => (
+                            <button
+                              key={card.id}
+                              type="button"
+                              className="ab-homepage-suggestion"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => {
+                                setCatalogSearch(card.name);
+                                setCatalogColor("Todas");
+                                setCatalogType("Todos");
+                                setCatalogSubtype("Todos");
+                                setTab("catalogo");
+                              }}
+                            >
+                              <span>{card.name}</span>
+                              <small>{card.type}{card.subtype ? ` · ${card.subtype}` : ""}</small>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      className="ab-btn ab-btn-primary ab-homepage-btn"
+                      onClick={() => setTab("alterego")}
+                    >
+                      CRIAR DECK
+                    </button>
+                  </div>
+                  <button
+                    className="ab-link-btn ab-homepage-advanced"
+                    onClick={() => setTab("catalogo")}
+                  >
+                    Busca avançada →
+                  </button>
+                </div>
+                <div className="ab-home-art-panel">
+                  <img src="./site-assets/alter_egos.png" alt="Alter Egos" />
+                </div>
               </div>
-              <button
-                className="ab-link-btn ab-homepage-advanced"
-                onClick={() => setTab("catalogo")}
-              >
-                Busca avançada →
-              </button>
+
+              <div className="ab-site-sections">
+                {[
+                  ["LORE", "Nas sombras da metrópole, fragmentos despertam poderes escondidos.", "lore_bg.png"],
+                  ["ALTER EGOS", "Escolha uma face, defina suas cores e molde o plano de jogo.", "alter_egos.png"],
+                  ["ARTIGOS", "Guias, estratégias e análises para melhorar suas listas.", "artigos.png"],
+                  ["NOTÍCIAS", "Atualizações, torneios e novidades do universo Alter Ego.", "news.png"],
+                ].map(([title, text, image]) => (
+                  <article key={title} className="ab-site-card">
+                    <img src={`./site-assets/${image}`} alt="" />
+                    <div>
+                      <h2>{title}</h2>
+                      <p>{text}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </div>
           </section>
         )}
@@ -1315,8 +1386,8 @@ export default function DeckBuilder() {
           />
         )}
 
-        {tab === "admin" && user?.role === "admin" && (
-          <AdminPanel embedded />
+        {tab === "admin" && isAdmin && (
+          <AdminPanel embedded currentUser={user} />
         )}
       </main>
     </div>

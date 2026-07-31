@@ -10,6 +10,22 @@ export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  function isAdminUser(value) {
+    return value?.role === "admin" || value?.role === "superadmin";
+  }
+
+  function persistSession(data) {
+    setToken(data.token);
+    localStorage.setItem("deckbuilder:auth_user", JSON.stringify(data.user));
+    if (isAdminUser(data.user)) {
+      localStorage.setItem("deckbuilder:admin_token", data.token);
+    } else {
+      localStorage.removeItem("deckbuilder:admin_token");
+    }
+    setUser(data.user);
+    return data.user;
+  }
+
   // Restaura sessão do token salvo
   useEffect(() => {
     const token = localStorage.getItem("deckbuilder:auth_token");
@@ -37,12 +53,7 @@ export function useAuth() {
         const text = await res.text();
         const data = text ? JSON.parse(text) : {};
         if (res.ok && data.token) {
-          setToken(data.token);
-          const adminUser = { ...data.user, role: "admin" };
-          localStorage.setItem("deckbuilder:auth_user", JSON.stringify(adminUser));
-          localStorage.setItem("deckbuilder:admin_token", data.token);
-          setUser(adminUser);
-          return adminUser;
+          return persistSession(data);
         }
       } catch {
         // Se falhar admin login, tenta login normal abaixo
@@ -51,18 +62,17 @@ export function useAuth() {
 
     // Login normal de jogador
     const data = await api.login(username, password);
-    setToken(data.token);
-    localStorage.setItem("deckbuilder:auth_user", JSON.stringify(data.user));
-    setUser(data.user);
-    return data.user;
+    return persistSession(data);
   }, []);
 
   const register = useCallback(async (username, password) => {
     const data = await api.register(username, password);
-    setToken(data.token);
-    localStorage.setItem("deckbuilder:auth_user", JSON.stringify(data.user));
-    setUser(data.user);
-    return data.user;
+    return persistSession(data);
+  }, []);
+
+  const loginWithGoogle = useCallback(async (credential) => {
+    const data = await api.loginWithGoogle(credential);
+    return persistSession(data);
   }, []);
 
   const logout = useCallback(() => {
@@ -72,5 +82,5 @@ export function useAuth() {
     setUser(null);
   }, []);
 
-  return { user, loading, login, register, logout };
+  return { user, loading, login, register, loginWithGoogle, logout };
 }

@@ -133,6 +133,7 @@ test("E2E API - Full integration test", async (t) => {
   t.after(stopServer);
 
   let tokenA, tokenB, tokenC;
+  let adminToken, promotedAdminToken;
   let deckIdA, deckIdB;
 
   await t.test("Health check", async () => {
@@ -412,7 +413,8 @@ test("E2E API - Full integration test", async (t) => {
     });
     assert.equal(status, 200);
     assert.ok(data.token);
-    assert.equal(data.user.role, "admin");
+    assert.equal(data.user.role, "superadmin");
+    adminToken = data.token;
   });
 
   await t.test("Admin login rejects wrong password", async () => {
@@ -424,11 +426,7 @@ test("E2E API - Full integration test", async (t) => {
   });
 
   await t.test("Admin token can access /api/admin/stats", async () => {
-    const login = await req("POST", "/api/admin/login", {
-      username: "admin",
-      password: "test-admin-password-e2e",
-    });
-    const { status, data } = await req("GET", "/api/admin/stats", null, login.data.token);
+    const { status, data } = await req("GET", "/api/admin/stats", null, adminToken);
     assert.equal(status, 200);
     assert.ok(typeof data.totalUsers === "number");
   });
@@ -436,5 +434,43 @@ test("E2E API - Full integration test", async (t) => {
   await t.test("Regular user token cannot access /api/admin/stats", async () => {
     const { status } = await req("GET", "/api/admin/stats", null, tokenA);
     assert.equal(status, 403);
+  });
+
+  await t.test("Superadmin can promote a regular user to admin", async () => {
+    const users = await req("GET", "/api/admin/users", null, adminToken);
+    const jogadorA = users.data.find((user) => user.username === "JogadorA");
+    assert.ok(jogadorA);
+
+    const { status, data } = await req("PUT", `/api/admin/users/${jogadorA.id}/role`, { role: "admin" }, adminToken);
+    assert.equal(status, 200);
+    assert.equal(data.user.role, "admin");
+  });
+
+  await t.test("Promoted admin can access admin stats after logging in again", async () => {
+    const login = await req("POST", "/api/auth/login", {
+      username: "JogadorA",
+      password: "senha123",
+    });
+    assert.equal(login.status, 200);
+    assert.equal(login.data.user.role, "admin");
+    promotedAdminToken = login.data.token;
+
+    const { status } = await req("GET", "/api/admin/stats", null, promotedAdminToken);
+    assert.equal(status, 200);
+  });
+
+  await t.test("Regular admin cannot change another user's admin role", async () => {
+    const users = await req("GET", "/api/admin/users", null, adminToken);
+    const jogadorB = users.data.find((user) => user.username === "JogadorB");
+    const { status } = await req("PUT", `/api/admin/users/${jogadorB.id}/role`, { role: "admin" }, promotedAdminToken);
+    assert.equal(status, 403);
+  });
+
+  await t.test("Superadmin can demote an admin back to player", async () => {
+    const users = await req("GET", "/api/admin/users", null, adminToken);
+    const jogadorA = users.data.find((user) => user.username === "JogadorA");
+    const { status, data } = await req("PUT", `/api/admin/users/${jogadorA.id}/role`, { role: "player" }, adminToken);
+    assert.equal(status, 200);
+    assert.equal(data.user.role, "player");
   });
 });

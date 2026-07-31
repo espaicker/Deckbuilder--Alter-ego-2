@@ -122,5 +122,31 @@ export async function initDb() {
       ON community_decks(alter_ego_id);
   `);
 
+  const userColumns = new Set(
+    wrapper.prepare("PRAGMA table_info(users)").all().map((column) => column.name)
+  );
+  const addUserColumn = (name, definition) => {
+    if (!userColumns.has(name)) {
+      wrapper.exec(`ALTER TABLE users ADD COLUMN ${name} ${definition}`);
+      userColumns.add(name);
+    }
+  };
+
+  addUserColumn("email", "TEXT");
+  addUserColumn("google_id", "TEXT");
+  addUserColumn("avatar_url", "TEXT DEFAULT ''");
+  addUserColumn("role", "TEXT NOT NULL DEFAULT 'player'");
+
+  wrapper.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email
+      ON users(email)
+      WHERE email IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id
+      ON users(google_id)
+      WHERE google_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_users_role
+      ON users(role);
+  `);
+
   return wrapper;
 }

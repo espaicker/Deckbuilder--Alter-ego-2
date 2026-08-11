@@ -2147,3 +2147,25 @@
   max-width: 420px;
   margin: 0;
 }
+
+/* ---------- CARD FORM IMAGE UPLOAD ---------- */
+.ab-card-form-image-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 3px dashed var(--border-color);
+  background: var(--shadow-color);
+}
+.ab-card-form-image-preview {
+  width: 120px;
+  height: auto;
+  max-height: 180px;
+  object-fit: contain;
+  border: 2px solid var(--border-color);
+}
+.ab-card-form-image-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+

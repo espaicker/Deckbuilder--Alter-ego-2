@@ -31,6 +31,36 @@ function AdminLogin({ onLogin }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  function handleImageSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target.result);
+    reader.readAsDataURL(file);
+  }
+
+  async function uploadImage(cardId) {
+    if (!imageFile) return;
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", imageFile);
+      const token = getAdminToken();
+      const res = await fetch(`/api/admin/cards/${cardId}/image`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+    } catch (err) {
+      flash("Erro ao enviar imagem: " + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
@@ -267,6 +297,9 @@ function CardForm({ meta, card, onClose, onSaved, flash }) {
   const [vida, setVida] = useState(card?.attributes?.vida ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const typeInfo = meta.types[type];
   const subtypes = typeInfo?.subtypes || [];
@@ -291,6 +324,36 @@ function CardForm({ meta, card, onClose, onSaved, flash }) {
       setKeywords(keywords.filter((k) => k !== kw));
     } else {
       setKeywords([...keywords, kw]);
+    }
+  }
+
+  function handleImageSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target.result);
+    reader.readAsDataURL(file);
+  }
+
+  async function uploadImage(cardId) {
+    if (!imageFile) return;
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", imageFile);
+      const token = getAdminToken();
+      const res = await fetch(`/api/admin/cards/${cardId}/image`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+    } catch (err) {
+      flash("Erro ao enviar imagem: " + err.message);
+    } finally {
+      setUploadingImage(false);
     }
   }
 
@@ -324,9 +387,11 @@ function CardForm({ meta, card, onClose, onSaved, flash }) {
     try {
       if (isEditing) {
         await adminReq("PUT", `/cards/${card.id}`, payload);
+        await uploadImage(card.id);
         flash(`Carta "${payload.name}" atualizada!`);
       } else {
         await adminReq("POST", "/cards", payload);
+        await uploadImage(payload.id);
         flash(`Carta "${payload.name}" criada!`);
       }
       onSaved();
@@ -352,6 +417,16 @@ function CardForm({ meta, card, onClose, onSaved, flash }) {
             Nome
             <input className="ab-input" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Nome da carta" />
           </label>
+        </div>
+
+        <div className="ab-card-form-section">
+          <span className="ab-auth-label">Imagem da carta</span>
+          <div className="ab-card-form-image-upload">
+            {imagePreview && <img src={imagePreview} alt="Preview" className="ab-card-form-image-preview" />}
+            {!imagePreview && isEditing && <img src={`/assets/cards/${card.id}.jpg`} alt="Atual" className="ab-card-form-image-preview" onError={(e) => { e.target.style.display = "none"; }} />}
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageSelect} className="ab-input" />
+            <span className="ab-card-form-image-hint">JPG, PNG ou WebP (max 5MB). O nome sera baseado no ID da carta.</span>
+          </div>
         </div>
 
         <div className="ab-card-form-row">

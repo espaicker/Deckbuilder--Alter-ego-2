@@ -1,0 +1,40 @@
+import rateLimit from "express-rate-limit";
+
+/**
+ * Limites de tentativa pra proteger contra força bruta de senha. Cada
+ * limite é por IP. Passar `NODE_ENV=test` desativa o limite (usado pela
+ * suíte de testes, que faz dezenas de logins de propósito em segundos).
+ */
+const DISABLED = process.env.NODE_ENV === "test";
+
+function makeLimiter({ windowMs, max, message }) {
+  return rateLimit({
+    windowMs,
+    max: DISABLED ? 0 : max,
+    skip: () => DISABLED,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: message },
+  });
+}
+
+// Login de jogador: 10 tentativas a cada 15 minutos por IP.
+export const loginLimiter = makeLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Muitas tentativas de login. Tente novamente em alguns minutos.",
+});
+
+// Registro de conta: 10 contas novas por hora por IP (evita criação em massa).
+export const registerLimiter = makeLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: "Muitas contas criadas a partir deste endereço. Tente novamente mais tarde.",
+});
+
+// Login de admin: mais restrito, é o alvo mais sensível.
+export const adminLoginLimiter = makeLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Muitas tentativas de login administrativo. Tente novamente em alguns minutos.",
+});

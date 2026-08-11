@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: forja-alter-egos
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # JWT_SECRET: o Render gera um valor aleatório seguro sozinho e o
+      # mantém entre reinícios (diferente do disco, variáveis de ambiente
+      # não são apagadas). Sem isso, no plano grátis (disco efêmero), o
+      # servidor geraria um segredo novo a cada reinício e derrubaria o
+      # login de todo mundo.
+      - key: JWT_SECRET
+        generateValue: true
+      # ADMIN_PASSWORD: o Render vai pedir pra você digitar esse valor no
+      # painel ao criar o serviço (não fica salvo neste arquivo). Pelo
+      # mesmo motivo do JWT_SECRET: no plano grátis, sem isso, a senha do
+      # admin gerada automaticamente mudaria a cada reinício.
+      - key: ADMIN_PASSWORD
+        sync: false

@@ -1,0 +1,1155 @@
+{
+  "colors": [
+    "Vermelho",
+    "Verde",
+    "Azul",
+    "Amarelo",
+    "Roxo"
+  ],
+  "types": {
+    "Alter Ego": {
+      "subtypes": null,
+      "outside_deck": true,
+      "has_cost": false,
+      "required_attributes": [
+        "vida",
+        "ataque",
+        "defesa"
+      ],
+      "multicolor": true
+    },
+    "Ação": {
+      "subtypes": [
+        "ofensiva",
+        "defensiva",
+        "auxiliar",
+        "especial"
+      ],
+      "outside_deck": false,
+      "has_cost": true,
+      "multicolor": false
+    },
+    "Reação": {
+      "subtypes": [
+        "ofensiva",
+        "defensiva",
+        "auxiliar",
+        "especial"
+      ],
+      "outside_deck": false,
+      "has_cost": true,
+      "multicolor": false
+    },
+    "Tática": {
+      "subtypes": [
+        "básico",
+        "superior"
+      ],
+      "outside_deck": false,
+      "has_cost": true,
+      "multicolor": false
+    },
+    "Drop": {
+      "subtypes": null,
+      "outside_deck": true,
+      "has_cost": false,
+      "has_effect": false,
+      "multicolor": false
+    }
+  },
+  "known_keywords": [
+    "Exumar",
+    "Improvisar",
+    "Premeditar",
+    "Reativar",
+    "Transpor"
+  ],
+  "cards": [
+    {
+      "id": "AE-0001",
+      "name": "Burnout",
+      "type": "Alter Ego",
+      "subtype": null,
+      "colors": [
+        "Vermelho",
+        "Verde"
+      ],
+      "cost": null,
+      "attributes": {
+        "vida": 38,
+        "ataque": 5,
+        "defesa": 0
+      },
+      "effect": "Uma vez durante o turno, Desative 1 DROP: O Alter Ego de cada oponente perderá 1 Ponto de Vida.\n\nUma vez durante o seu turno, se um ou mais oponentes perderam 1 ou mais Pontos de Vida pelos seus efeitos ou pela sua habilidade, você poderá descartar duas cartas do topo do seu próprio deck e jogar uma das cartas descartadas pagando o seu custo.",
+      "keywords": []
+    },
+    {
+      "id": "ACA-0001",
+      "name": "Queima de Arquivo",
+      "type": "Ação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Improvisar (Se esta carta estiver no seu descarte, você poderá pagar o seu custo. Se fizer isso, realize o efeito desta carta. Em seguida, coloque-a no fundo do seu próprio deck.)\n\nComo custo adicional, o seu Alter Ego perderá 2 Pontos de Vida: Compre duas cartas.",
+      "keywords": [
+        "Improvisar"
+      ]
+    },
+    {
+      "id": "ACE-0001",
+      "name": "Bola de Fogo",
+      "type": "Ação",
+      "subtype": "especial",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "O Alter Ego alvo perderá 2 Pontos de Vida.",
+      "keywords": []
+    },
+    {
+      "id": "REO-0001",
+      "name": "Golpe Surpresa",
+      "type": "Reação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 1,
+      "attributes": {
+        "ataque": 2
+      },
+      "effect": null,
+      "keywords": []
+    },
+    {
+      "id": "RED-0001",
+      "name": "Zona de Explosão",
+      "type": "Reação",
+      "subtype": "defensiva",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 1,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Ao anexar, o Alter Ego alvo perderá 1 Ponto de Vida.",
+      "keywords": []
+    },
+    {
+      "id": "TAB-0001",
+      "name": "Segundo Sol",
+      "type": "Tática",
+      "subtype": "básico",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Coloque esta carta em seu campo.\n\nAo ser destruído, o Alter Ego alvo perderá 1 Ponto de Vida.\n\nDesative esta carta e 1 DROP: O Alter Ego de cada oponente perderá 1 Ponto de Vida.",
+      "keywords": []
+    },
+    {
+      "id": "TAS-0001",
+      "name": "Hostilidade Superior",
+      "type": "Tática",
+      "subtype": "superior",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Coloque esta carta em seu campo.\n\nDesative esta carta e 1 DROP: Até o final do próximo Combate, o seu Alter Ego ganhará 1 Ponto de Dano base.",
+      "keywords": []
+    },
+    {
+      "id": "AE-0002",
+      "name": "Fenrir",
+      "type": "Alter Ego",
+      "subtype": null,
+      "colors": [
+        "Verde",
+        "Roxo"
+      ],
+      "cost": null,
+      "attributes": {
+        "vida": 34,
+        "ataque": 4,
+        "defesa": 1
+      },
+      "effect": "Todos os turnos, Desative 1 DROP: Retorne três cartas do seu descarte para o fundo do seu próprio deck. Se fizer isso, uma carta anexada a Fenrir ganhará 1 Ponto adicional em seu respectivo Atributo.\n\nToda vez que uma carta anexada ganhar 1 ou mais Pontos adicionais em seu respectivo Atributo pelos seus efeitos ou pela sua habilidade, Fenrir ganhará 1 Ponto de Vida.",
+      "keywords": []
+    },
+    {
+      "id": "AE-0003",
+      "name": "Spark",
+      "type": "Alter Ego",
+      "subtype": null,
+      "colors": [
+        "Azul",
+        "Vermelho"
+      ],
+      "cost": null,
+      "attributes": {
+        "vida": 36,
+        "ataque": 3,
+        "defesa": 1
+      },
+      "effect": "Ao atacar, Desative 2 DROPs: Compre uma carta.\n\nToda vez que você comprar uma ou mais cartas pelos seus efeitos ou pela sua habilidade, o Alter Ego alvo perderá 1 Ponto de Vida.",
+      "keywords": []
+    },
+    {
+      "id": "AE-0004",
+      "name": "Kimera",
+      "type": "Alter Ego",
+      "subtype": null,
+      "colors": [
+        "Amarelo",
+        "Azul"
+      ],
+      "cost": null,
+      "attributes": {
+        "vida": 36,
+        "ataque": 3,
+        "defesa": 1
+      },
+      "effect": "Ao atacar, desative 2 DROPs: Você poderá retornar uma carta anexada ao seu Alter Ego para a sua mão. Se fizer isso, compre uma carta.\n\nToda vez que uma carta anexada a Kimera for retornada para a sua mão pelos seus efeitos ou pela sua habilidade, Ative Kimera.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0001",
+      "name": "Parasita Voraz",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Enquanto estiver anexado, até o final desse turno, toda vez que um ou mais oponentes perderem 1 ou mais Pontos de Vida pelos seus efeitos ou pela sua habilidade, Parasita Voraz ganha 1 Ponto de Dano adicional.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0001",
+      "name": "Arame Farpado",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Ao ser destruído, o Alter Ego alvo perderá 2 Pontos de Vida.",
+      "keywords": []
+    },
+    {
+      "id": "ACA-0002",
+      "name": "Quebra de Armadura",
+      "type": "Ação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Improvisar (Se esta carta estiver no seu descarte, você poderá pagar o seu custo. Se fizer isso, realize o efeito desta carta. Em seguida, coloque-a no fundo do seu próprio deck.)\n\nA Defensiva alvo anexada a um Alter Ego perderá 3 Pontos de Resistência.",
+      "keywords": [
+        "Improvisar"
+      ]
+    },
+    {
+      "id": "REA-0001",
+      "name": "Solução Corrosiva",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 0,
+      "attributes": {},
+      "effect": "A Defensiva alvo anexada a um Alter Ego perderá 1 Ponto de Resistência.",
+      "keywords": []
+    },
+    {
+      "id": "ACE-0002",
+      "name": "Crematório",
+      "type": "Ação",
+      "subtype": "especial",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "O Alter Ego alvo perderá 1 Ponto de Vida, em seguida, destrua a Tática - Básica alvo em campo.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0001",
+      "name": "Ponto de Ignição",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Improvisar (Se esta carta estiver no seu descarte, você poderá pagar o seu custo. Se fizer isso, realize o efeito desta carta. Em seguida, coloque-a no fundo do seu próprio deck.)\n\nO Alter Ego alvo perderá 1 Ponto de Vida.",
+      "keywords": [
+        "Improvisar"
+      ]
+    },
+    {
+      "id": "TAS-0002",
+      "name": "Marcado em Brasa",
+      "type": "Tática",
+      "subtype": "superior",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Toda vez que um oponente comprar uma ou mais cartas, o seu respectivo Alter Ego perderá 1 Ponto de Vida.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0002",
+      "name": "Reação em Cadeia",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Transpor (O custo desta carta poderá ser pago por qualquer cor de DROP.)\n\nSome a quantidade de cartas em sua mão com a quantidade de cartas na mão de um oponente alvo. Para cada três cartas, o Alter Ego alvo perderá 1 Ponto de Vida.",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "ACO-0002",
+      "name": "Golpe Baixo",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Ao atacar, a Ação - Defensiva anexada ao Alter Ego alvo perderá 2 Pontos de Resistência.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0003",
+      "name": "Feixe Rápido",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Ao anexar, compre uma carta.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0004",
+      "name": "Corrente Súbita",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Ao anexar, Premeditar 2 (Compre X cartas, em seguida, coloque X cartas da sua mão no topo ou no fundo do seu deck em qualquer ordem, sendo X o nível de Premeditar.)",
+      "keywords": [
+        "Premeditar"
+      ]
+    },
+    {
+      "id": "ACO-0005",
+      "name": "Sobrecarga",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 3,
+      "attributes": {
+        "ataque": 0
+      },
+      "effect": "Enquanto estiver anexado, se você tiver cinco ou mais cartas na sua mão, Sobrecarga ganha 4 Pontos de Dano adicionais.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0002",
+      "name": "Teia Eletromagnética",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Ao anexar, você poderá comprar uma carta.",
+      "keywords": []
+    },
+    {
+      "id": "REA-0002",
+      "name": "Reverter Proteção",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Retorne a Ação - Defensiva alvo de custo 2 ou menor anexada a um Alter Ego para a mão do seu usuário.",
+      "keywords": []
+    },
+    {
+      "id": "REA-0003",
+      "name": "Resetar ao Padrão",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Coloque a carta alvo em campo ou anexada a um Alter Ego para o fundo do deck do seu usuário.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0003",
+      "name": "Queda de Força",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Cancele a carta alvo de custo 3 ou menor de um oponente.",
+      "keywords": []
+    },
+    {
+      "id": "REA-0004",
+      "name": "Conversão Automática",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Transpor (O custo desta carta poderá ser pago por qualquer cor de DROP.) Coloque uma carta da sua mão no fundo do seu próprio deck. Se fizer isso, compre duas cartas.",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "REA-0005",
+      "name": "Dissipação",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Coloque a Tática alvo em campo para a mão do seu usuário.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0003",
+      "name": "Voltagem Absoluta",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 1,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Ao anexar, Premeditar 1 (Compre X cartas, em seguida, coloque X cartas da sua mão no topo ou no fundo do seu deck em qualquer ordem, sendo X o nível de Premeditar.)",
+      "keywords": [
+        "Premeditar"
+      ]
+    },
+    {
+      "id": "TAS-0003",
+      "name": "Expansão Voltaica",
+      "type": "Tática",
+      "subtype": "superior",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Ao entrar em campo, Premeditar 1.\n\nDesative esta carta e 1 DROP: Compre uma carta.",
+      "keywords": []
+    },
+    {
+      "id": "TAB-0002",
+      "name": "Explosão Temporal",
+      "type": "Tática",
+      "subtype": "básico",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Desative esta carta e 2 DROPs: Coloque Explosão Temporal no fundo do seu próprio deck, se fizer isso, coloque a carta alvo em campo ou anexada a um Alter Ego para o fundo do deck do seu usuário.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0004",
+      "name": "Campo de Força",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Enquanto estiver anexado, até o final desse turno, toda vez que você comprar uma ou mais cartas pelo seus efeitos ou pela sua Habilidade, Campo de Força ganhará 1 Ponto de Resistência adicional.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0005",
+      "name": "Carga Seletiva",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 3,
+      "attributes": {
+        "defesa": 2
+      },
+      "effect": "Transpor (O custo desta carta poderá ser pago por qualquer cor de DROP.) Ao anexar, retorne até uma carta alvo anexada ao seu Alter Ego para a sua mão, em seguida, retorne até uma carta alvo anexada a um Alter Ego de um oponente para a mão do seu usuário.",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "REE-0004",
+      "name": "Troca Instantânea",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Retorne a carta alvo anexada ao seu Alter Ego para a sua mão.",
+      "keywords": []
+    },
+    {
+      "id": "REA-0006",
+      "name": "Reforçar Impacto",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "A Ação - Ofensiva alvo anexada ao seu Alter Ego ganhará 2 Pontos de Dano adicionais até o final do turno.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0006",
+      "name": "Corrosão",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 3,
+      "attributes": {
+        "defesa": 2
+      },
+      "effect": "Ao anexar, destrua uma Ação - Defensiva alvo de custo 2 ou menor anexada a um Alter Ego.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0006",
+      "name": "Retroalimentar",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Transpor (O custo desta carta poderá ser pago por qualquer cor de DROP.) Ao anexar, descarte uma carta do topo do seu próprio deck, se fizer isso, coloque uma carta de custo 1 ou menor do seu descarte na sua mão.",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "ACO-0007",
+      "name": "Presas Lupinas",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Ao anexar, olhe as duas cartas do topo do seu próprio deck, em seguida, coloque uma na sua mão e a outra no seu descarte.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0008",
+      "name": "Beijo do Vampiro",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Ao atacar, o seu Alter Ego ganha Pontos de Vida equivalente aos Pontos de Dano de Beijo do Vampiro.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0009",
+      "name": "Ruptura",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 5,
+      "attributes": {
+        "ataque": 3
+      },
+      "effect": "Ao anexar, anexe ao seu Alter Ego uma Ação - Defensiva alvo de custo 3 ou menor do seu descarte sem pagar o seu custo.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0007",
+      "name": "Retaguarda da Matilha",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nTranspor (O custo desta carta poderá ser pago por qualquer cor de DROP.) Ao anexar, coloque uma carta Verde alvo de custo 2 ou menor do seu descarte na sua mão, exceto por Retaguarda da Matilha.",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "ACD-0008",
+      "name": "Trilha de Expedição",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo anexar, para cada quatro cartas em seu descarte, Trilha de Expedição ganhará 1 Ponto de Resistência adicional.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0009",
+      "name": "Persistência da Carpa",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 5,
+      "attributes": {
+        "defesa": 3
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo anexar, anexe ao seu Alter Ego uma Ação - Ofensiva alvo de custo 2 ou menor do seu descarte sem pagar o seu custo.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0010",
+      "name": "Ursa Maior",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 3,
+      "attributes": {
+        "defesa": 2
+      },
+      "effect": "Ao anexar, você poderá descartar as três cartas do topo do seu próprio deck. Se fizer isso, coloque uma carta alvo de custo 2 ou menor do seu descarte na sua mão, exceto por Ursa Maior.",
+      "keywords": []
+    },
+    {
+      "id": "REA-0007",
+      "name": "Naturalizar Terreno",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Descarte uma carta da sua mão. Se fizer isso, destrua uma Tática alvo em campo.",
+      "keywords": []
+    },
+    {
+      "id": "REA-0008",
+      "name": "Desenvolvimento Inesperado",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "A carta Verde alvo anexada ao seu Alter Ego ganhará 2 Pontos adicionais em seu respectivo Atributo até o final desse turno.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0011",
+      "name": "Olhos de Tigre",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 1,
+      "attributes": {
+        "defesa": 3
+      },
+      "effect": "Como custo adicional, descarte uma carta da sua mão: Anexe esta carta ao seu Alter Ego.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0012",
+      "name": "Vitalidade Feroz",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Ao anexar, a carta alvo anexada ao seu Alter Ego ganhará 2 Pontos adicionais em seu respectivo Atributo.",
+      "keywords": []
+    },
+    {
+      "id": "TAB-0003",
+      "name": "Sétima Lua Cheia",
+      "type": "Tática",
+      "subtype": "básico",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Toda vez que uma Tática deixar o campo, o seu Alter Ego ganhará 1 Ponto de Vida.\n\nDesative esta carta e 1 DROP: O seu Alter Ego Ganhará 1 Ponto de Vida.",
+      "keywords": []
+    },
+    {
+      "id": "TAS-0004",
+      "name": "Sentido Rapina",
+      "type": "Tática",
+      "subtype": "superior",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Desative esta carta e 2 DROPs: Descarte uma carta da sua mão. Se fizer isso, compre duas cartas.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0010",
+      "name": "Flecha Alternativa",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Ao anexar, Reativar (Ative uma carta que esteja desativada no seu campo.)",
+      "keywords": [
+        "Reativar"
+      ]
+    },
+    {
+      "id": "ACO-0011",
+      "name": "Disparo Sequenciado",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Ao atacar, durante este turno, se o seu Alter Ego estava desativado e foi Ativado pelos seus efeitos ou pela sua habilidade, Disparo Sequenciado ganha 3 Pontos de Dano adicionais.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0012",
+      "name": "Neutralizar o Alvo",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Ao anexar, a próxima carta Amarela jogada da sua mão terá o seu custo de DROP reduzido em 2.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0013",
+      "name": "Manto da Rainha",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 1
+      },
+      "effect": "Transpor (O custo desta carta poderá ser pago por qualquer cor de DROP.) Ao anexar, embaralhe uma carta de custo 1 do seu descarte no seu deck. Se fizer isso, ative 1 DROP Amarelo Desativado no seu campo.",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "ACO-0014",
+      "name": "Medida Restritiva",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 4,
+      "attributes": {
+        "ataque": 3
+      },
+      "effect": "No final do seu ataque, Ative 1 DROP que esteja desativado no seu campo.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0015",
+      "name": "Armadinha Desencadeada",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 5,
+      "attributes": {
+        "ataque": 4
+      },
+      "effect": "No final do seu ataque, Ative o seu Alter Ego.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0013",
+      "name": "Formação da Trincheira",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 3,
+      "attributes": {
+        "defesa": 2
+      },
+      "effect": "Ao anexar, Reativar (Ative uma carta que esteja Desativada no seu campo.)",
+      "keywords": [
+        "Reativar"
+      ]
+    },
+    {
+      "id": "ACA-0003",
+      "name": "Otimizar Recursos",
+      "type": "Ação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Durante este turno, a sua próxima carta de Ação Amarela jogada da mão terá o seu custo de DROP reduzido em 2.",
+      "keywords": []
+    },
+    {
+      "id": "ACE-0003",
+      "name": "Ordem do Caçador",
+      "type": "Ação",
+      "subtype": "especial",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 5,
+      "attributes": {},
+      "effect": "Ative 3 cartas alvo que estejam desativadas no seu campo.",
+      "keywords": []
+    },
+    {
+      "id": "RED-0002",
+      "name": "Reflexo Colateral",
+      "type": "Reação",
+      "subtype": "defensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Transpor (O custo desta carta poderá ser pago por qualquer cor de DROP.) Ao anexar, Ative 1 DROP Desativado no seu campo.",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "TAB-0004",
+      "name": "Liberdade Condicional",
+      "type": "Tática",
+      "subtype": "básico",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Desative esta carta e 1 DROP: Escolha uma Tática Desativada em campo. A Tática escolhida não ativará durante a próxima Fase de Ativação do seu usuário.",
+      "keywords": []
+    },
+    {
+      "id": "TAS-0005",
+      "name": "Serenidade do Caçador",
+      "type": "Tática",
+      "subtype": "superior",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Desative esta carta: Reativar. (Ative uma carta que esteja desativada no seu campo.)",
+      "keywords": [
+        "Reativar"
+      ]
+    },
+    {
+      "id": "REE-0005",
+      "name": "Relembrar",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Transpor (O custo desta carta poderá ser pago por qualquer cor de DROP.) Embaralhe até duas cartas de custo 3 ou menor do seu descarte no seu deck. Se fizer isso, Ative 1 DROP Desativado no seu campo.",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "ACD-0014",
+      "name": "Aparar",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 1,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Ao anexar, Ative 1 DROP Desativado no seu campo.",
+      "keywords": []
+    },
+    {
+      "id": "ACA-0004",
+      "name": "Manifestar Mistério",
+      "type": "Ação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Transpor (O custo desta carta poderá ser pago por qualquer cor de DROP.) Compre uma carta, em seguida, coloque uma carta da sua mão no topo do seu próprio deck.",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "ACO-0016",
+      "name": "Adentra o Oculto",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 3
+      },
+      "effect": "Transpor, ao atacar, descarte uma carta do topo do seu próprio deck.",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "REA-0009",
+      "name": "Retomar",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Escolha uma carta alvo de custo 2 ou menor em seu descarte e jogue-a sem pagar o seu custo.",
+      "keywords": []
+    },
+    {
+      "id": "ACA-0005",
+      "name": "Veneno Carmesim",
+      "type": "Ação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Exumar (Se esta carta foi descartada do topo do seu próprio deck pelos seus efeitos ou pela sua habilidade, jogue-a sem pagar o seu custo.)\n\nO seu Alter Ego ganhará 3 Pontos de Vida, em seguida, descarte uma carta do topo do seu próprio deck.",
+      "keywords": [
+        "Exumar"
+      ]
+    },
+    {
+      "id": "ACE-0004",
+      "name": "Sabotar",
+      "type": "Ação",
+      "subtype": "especial",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "O oponente alvo descartará uma carta da mão. Se fizer isso, ele descartará uma carta do topo do próprio deck.",
+      "keywords": []
+    },
+    {
+      "id": "82",
+      "name": "Drop Vermelho",
+      "type": "Drop",
+      "subtype": null,
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": null,
+      "attributes": {},
+      "effect": null,
+      "keywords": []
+    },
+    {
+      "id": "83",
+      "name": "Drop Azul",
+      "type": "Drop",
+      "subtype": null,
+      "colors": [
+        "Azul"
+      ],
+      "cost": null,
+      "attributes": {},
+      "effect": null,
+      "keywords": []
+    },
+    {
+      "id": "84",
+      "name": "Drop Verde",
+      "type": "Drop",
+      "subtype": null,
+      "colors": [
+        "Verde"
+      ],
+      "cost": null,
+      "attributes": {},
+      "effect": null,
+      "keywords": []
+    },
+    {
+      "id": "85",
+      "name": "Drop Amarelo",
+      "type": "Drop",
+      "subtype": null,
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": null,
+      "attributes": {},
+      "effect": null,
+      "keywords": []
+    },
+    {
+      "id": "86",
+      "name": "Drop Roxo",
+      "type": "Drop",
+      "subtype": null,
+      "colors": [
+        "Roxo"
+      ],
+      "cost": null,
+      "attributes": {},
+      "effect": null,
+      "keywords": []
+    }
+  ]
+}

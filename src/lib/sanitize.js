@@ -29,7 +29,7 @@ export function isSafeCardId(id) {
 /** Retorna o caminho seguro para a imagem, ou null se o ID for inválido. */
 export function safeCardImagePath(id) {
   if (!isSafeCardId(id)) return null;
-  return `./assets/cards/${id}.jpg`;
+  return `/assets/cards/${id}.jpg`;
 }
 
 /** Escapa metacaracteres de regex para uso seguro em new RegExp. */

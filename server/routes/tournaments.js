@@ -89,6 +89,70 @@ function insertMatches(db, tournamentId, roundId, matches) {
   });
 }
 
+/**
+ * Distribui pontos para todos os participantes ao finalizar um torneio.
+ * Regras:
+ *   - Vitória em partida: +3 pontos
+ *   - Empate em partida: +1 ponto
+ *   - Bônus Campeão: +10 pontos
+ * Apenas torneios com is_official = 1 geram pontos para o ranking global.
+ */
+function distributePoints(db, tournament) {
+  if (!tournament.is_official) return;
+
+  const insertPt = db.prepare(
+    "INSERT INTO point_history (user_id, tournament_id, points_awarded, reason) VALUES (?, ?, ?, ?)"
+  );
+
+  // Get all matches for this tournament with player info
+  const allMatches = db.prepare(
+    `SELECT tm.*, tp1.user_id AS user1_id, tp2.user_id AS user2_id
+     FROM tournament_matches tm
+     LEFT JOIN tournament_players tp1 ON tp1.id = tm.player1_id
+     LEFT JOIN tournament_players tp2 ON tp2.id = tm.player2_id
+     WHERE tm.tournament_id = ? AND tm.result != 'pending'`
+  ).all(tournament.id);
+
+  // Award match points
+  for (const match of allMatches) {
+    if (match.result === "bye") {
+      // Bye counts as a win for player1
+      if (match.user1_id) {
+        insertPt.run(match.user1_id, tournament.id, 3, "Vitória (bye)");
+      }
+    } else if (match.result === "player1") {
+      if (match.user1_id) {
+        insertPt.run(match.user1_id, tournament.id, 3, "Vitória em partida");
+      }
+    } else if (match.result === "player2") {
+      if (match.user2_id) {
+        insertPt.run(match.user2_id, tournament.id, 3, "Vitória em partida");
+      }
+    } else if (match.result === "draw") {
+      if (match.user1_id) {
+        insertPt.run(match.user1_id, tournament.id, 1, "Empate em partida");
+      }
+      if (match.user2_id) {
+        insertPt.run(match.user2_id, tournament.id, 1, "Empate em partida");
+      }
+    }
+  }
+
+  // Determine champion: winner of the last bracket match, or #1 in standings for swiss
+  const { players: enginePlayers, matches: engineMatches } = loadEngineData(db, tournament.id);
+  const standings = computeStandings(enginePlayers, engineMatches);
+
+  if (standings.length > 0) {
+    const championPlayerId = standings[0].playerId;
+    const champion = db.prepare(
+      "SELECT user_id FROM tournament_players WHERE id = ?"
+    ).get(championPlayerId);
+    if (champion) {
+      insertPt.run(champion.user_id, tournament.id, 10, "Campeão do torneio");
+    }
+  }
+}
+
 /* ============================================================
    LISTAR / CRIAR
    ============================================================ */
@@ -108,7 +172,7 @@ router.get("/", optionalAuth, (req, res) => {
 });
 
 router.post("/", requireAuth, (req, res) => {
-  const { name, description, format, top_cut_size, max_players } = req.body || {};
+  const { name, description, format, top_cut_size, max_players, is_official } = req.body || {};
 
   if (!name || typeof name !== "string" || !name.trim() || name.length > MAX_NAME_LENGTH) {
     return res.status(400).json({ error: `Nome é obrigatório (máx. ${MAX_NAME_LENGTH} caracteres).` });
@@ -127,10 +191,13 @@ router.post("/", requireAuth, (req, res) => {
   const safeDescription =
     typeof description === "string" ? description.slice(0, MAX_DESCRIPTION_LENGTH) : "";
 
-  const result = req.db
+  // Only admins can create official tournaments
+    const official = (is_official && req.user.role === "admin") ? 1 : 0;
+
+    const result = req.db
     .prepare(
-      `INSERT INTO tournaments (name, description, format, top_cut_size, max_players, organizer_id)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO tournaments (name, description, format, top_cut_size, max_players, organizer_id, is_official)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       name.trim(),
@@ -138,7 +205,8 @@ router.post("/", requireAuth, (req, res) => {
       format,
       format === "swiss_topcut" ? top_cut_size : null,
       max_players ?? null,
-      req.user.id
+      req.user.id,
+      official
     );
 
   res.status(201).json({ id: result.lastInsertRowid, message: "Torneio criado!" });
@@ -387,6 +455,7 @@ router.post("/:id/next-round", requireAuth, (req, res) => {
       req.db
         .prepare("UPDATE tournaments SET status = 'finalizado', finished_at = datetime('now') WHERE id = ?")
         .run(tournament.id);
+      distributePoints(req.db, tournament);
       return res.json({ message: "Torneio finalizado!", finished: true });
     }
     const nextMatches = advanceBracketRound(
@@ -413,6 +482,7 @@ router.post("/:id/next-round", requireAuth, (req, res) => {
     req.db
       .prepare("UPDATE tournaments SET status = 'finalizado', finished_at = datetime('now') WHERE id = ?")
       .run(tournament.id);
+    distributePoints(req.db, tournament);
     return res.json({ message: "Torneio finalizado!", finished: true });
   }
 

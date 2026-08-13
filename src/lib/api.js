@@ -94,4 +94,13 @@ export const api = {
     request("POST", `/tournaments/${tournamentId}/matches/${matchId}/report`, { result }),
 
   cancelTournament: (id) => request("POST", `/tournaments/${id}/cancel`),
+
+  // Ranking
+  getRanking: (page = 1, limit = 50, search = "") => {
+    const params = new URLSearchParams({ page, limit });
+    if (search) params.set("search", search);
+    return request("GET", `/ranking?${params.toString()}`);
+  },
+
+  getRankingHistory: (userId) => request("GET", `/ranking/${userId}/history`),
 };

@@ -9,6 +9,7 @@ import deckRoutes from "./routes/decks.js";
 import adminRoutes from "./routes/admin.js";
 import cardsRoutes from "./routes/cards.js";
 import tournamentRoutes from "./routes/tournaments.js";
+import rankingRoutes from "./routes/ranking.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -41,6 +42,7 @@ app.use("/api/decks", deckRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/cards", cardsRoutes);
 app.use("/api/tournaments", tournamentRoutes);
+app.use("/api/ranking", rankingRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

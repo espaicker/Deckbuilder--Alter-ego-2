@@ -2,10 +2,12 @@ import { useState } from "react";
 import DecklistsTab from "./DecklistsTab.jsx";
 import TournamentsTab from "./TournamentsTab.jsx";
 import ForumTab from "./ForumTab.jsx";
+import RankingTab from "./RankingTab.jsx";
 
 const SUBTABS = [
   ["decklists", "Decklists"],
   ["torneios", "Torneios"],
+  ["ranking", "Ranking"],
   ["forum", "Fórum"],
 ];
 
@@ -44,6 +46,10 @@ export default function CommunityPage({ user, alterEgo, mainDeck, dropPile, flas
             flashToast={flashToast}
             onRequestLogin={onRequestLogin}
           />
+        )}
+
+        {subtab === "ranking" && (
+          <RankingTab />
         )}
 
         {subtab === "forum" && (

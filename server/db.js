@@ -190,7 +190,32 @@ export async function initDb() {
       ON tournament_matches(round_id);
     CREATE INDEX IF NOT EXISTS idx_tournament_matches_tournament
       ON tournament_matches(tournament_id);
+
+    CREATE TABLE IF NOT EXISTS point_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      tournament_id INTEGER NOT NULL,
+      points_awarded INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_point_history_user
+      ON point_history(user_id);
+    CREATE INDEX IF NOT EXISTS idx_point_history_tournament
+      ON point_history(tournament_id);
+    CREATE INDEX IF NOT EXISTS idx_point_history_user_points
+      ON point_history(user_id, points_awarded);
   `);
+
+  // Migration: add is_official column if missing
+  try {
+    wrapper.exec("ALTER TABLE tournaments ADD COLUMN is_official INTEGER NOT NULL DEFAULT 0");
+  } catch (e) {
+    // Column already exists — ignore
+  }
 
   return wrapper;
 }

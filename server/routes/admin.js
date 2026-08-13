@@ -193,33 +193,30 @@ router.get("/stats", requireAdmin, (req, res) => {
  */
 router.get("/analytics", requireAdmin, (req, res) => {
   try {
-    // Top cards in winning decks (decks that won matches in official tournaments)
-    const topCards = req.db.prepare(`
-      SELECT card_id, card_name, card_type, times_used, wins,
-        CASE WHEN times_used > 0 THEN ROUND((wins * 100.0 / times_used), 1) ELSE 0 END AS win_rate
-      FROM (
-        SELECT
-          je.key AS card_id,
-          je.value AS qty,
-          (SELECT name FROM json_each(?) WHERE key = je.key LIMIT 1) AS card_name,
-          COUNT(DISTINCT tm.id) AS times_used,
-          SUM(CASE
-            WHEN (tm.player1_id = tp.id AND tm.result = 'player1') THEN 1
-            WHEN (tm.player2_id = tp.id AND tm.result = 'player2') THEN 1
-            ELSE 0
-          END) AS wins
-        FROM tournament_players tp
-        JOIN tournaments t ON t.id = tp.tournament_id AND t.is_official = 1 AND t.status = 'finalizado'
-        JOIN community_decks cd ON cd.id = tp.deck_id
-        JOIN json_each(cd.main_deck) je
-        JOIN tournament_matches tm ON tm.tournament_id = t.id
-          AND (tm.player1_id = tp.id OR tm.player2_id = tp.id)
-          AND tm.result != 'pending' AND tm.result != 'bye'
-        GROUP BY je.key
-      )
-      ORDER BY wins DESC, times_used DESC
-      LIMIT 20
-    `).all("{}");
+    // Top cards in winning decks (simplified for sql.js)
+    const winningDeckRows = req.db.prepare(`
+      SELECT cd.main_deck
+      FROM tournament_players tp
+      JOIN tournaments t ON t.id = tp.tournament_id AND t.is_official = 1 AND t.status = 'finalizado'
+      JOIN community_decks cd ON cd.id = tp.deck_id
+      JOIN tournament_matches tm ON tm.tournament_id = t.id
+        AND ((tm.player1_id = tp.id AND tm.result = 'player1')
+          OR (tm.player2_id = tp.id AND tm.result = 'player2'))
+    `).all();
+
+    const cardUsageMap = {};
+    for (const row of winningDeckRows) {
+      let deck;
+      try { deck = JSON.parse(row.main_deck); } catch { continue; }
+      for (const [cardId, qty] of Object.entries(deck)) {
+        if (!cardUsageMap[cardId]) cardUsageMap[cardId] = 0;
+        cardUsageMap[cardId] += Number(qty) || 0;
+      }
+    }
+    const topCards = Object.entries(cardUsageMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([card_id, times_used]) => ({ card_id, times_used }));
 
     // Win rate by card type (archetype analysis)
     // Simplified: analyze decks by majority card type

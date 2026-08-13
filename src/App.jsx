@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import CARD_DATA from "./data/modelo_cartas.json";
 import "./App.css";
 import { DECK_RULES, attackDefenseAverages, colorBreakdown, colorsSubset, costCurve, countEntries, createCardIndex, createExportText, normalizeBuild, normalizeSavedDeckIndex, typeSubtypeBreakdown, validateDeck } from "./lib/deckRules.js";
@@ -9,6 +10,7 @@ import { useAuth } from "./hooks/useAuth.js";
 import AuthModal from "./components/AuthModal.jsx";
 import CommunityPage from "./components/CommunityPage.jsx";
 import AdminPanel from "./components/AdminPanel.jsx";
+import AnalyticsPanel from "./components/AnalyticsPanel.jsx";
 
 const { mainDeckSize: MAIN_DECK_SIZE, dropPileSize: DROP_PILE_SIZE, maxCopies: MAX_COPIES } = DECK_RULES;
 
@@ -232,7 +234,53 @@ function CardPreviewModal({ card, onClose }) {
   );
 }
 export default function DeckBuilder() {
-  const [tab, setTab] = useState("inicio");
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Route → Tab mapping
+  const getTabFromPath = useCallback((path) => {
+    if (path === "/" || path === "") return "inicio";
+    if (path.startsWith("/deck")) return "alterego";
+    if (path === "/deck/alterego") return "alterego";
+    if (path === "/deck/montar") return "deck";
+    if (path === "/deck/drops") return "drops";
+    if (path === "/deck/resumo") return "resumo";
+    if (path === "/catalogo") return "catalogo";
+    if (path.startsWith("/comunidade")) return "comunidade";
+    if (path.startsWith("/admin")) return "admin";
+    return "inicio";
+  }, []);
+
+  const getPathFromTab = useCallback((t) => {
+    switch (t) {
+      case "inicio": return "/";
+      case "alterego": return "/deck/alterego";
+      case "deck": return "/deck/montar";
+      case "drops": return "/deck/drops";
+      case "resumo": return "/deck/resumo";
+      case "catalogo": return "/catalogo";
+      case "comunidade": return "/comunidade";
+      case "admin": return "/admin";
+      default: return "/";
+    }
+  }, []);
+
+  const [tab, setTabInternal] = useState(() => getTabFromPath(location.pathname));
+
+  // Sync tab with URL
+  function setTab(newTab) {
+    setTabInternal(newTab);
+    const path = getPathFromTab(newTab);
+    if (location.pathname !== path) {
+      navigate(path, { replace: false });
+    }
+  }
+
+  // Sync URL changes (back/forward) with tab
+  useEffect(() => {
+    const tabFromUrl = getTabFromPath(location.pathname);
+    setTabInternal(tabFromUrl);
+  }, [location.pathname, getTabFromPath]);
   const [alterEgoId, setAlterEgoId] = useState(null);
   const [mainDeck, setMainDeck] = useState({});
   const [dropPile, setDropPile] = useState({});

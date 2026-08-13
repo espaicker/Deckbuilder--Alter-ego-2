@@ -61,6 +61,11 @@ if (existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR));
   app.get("/admin", (req, res) => res.sendFile(join(DIST_DIR, "admin.html")));
   app.get("/", (req, res) => res.sendFile(join(DIST_DIR, "index.html")));
+  // SPA fallback — qualquer rota que não é API nem arquivo estático serve o index.html
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/") || req.path.startsWith("/assets/")) return next();
+    res.sendFile(join(DIST_DIR, "index.html"));
+  });
 }
 
 app.listen(PORT, () => {

@@ -109,6 +109,14 @@ export const api = {
 
   updateProfile: (bio) => request("PUT", "/profile", { bio }),
 
+  // Analytics (Admin)
+  getAnalytics: () => {
+    const token = localStorage.getItem("deckbuilder:admin_token") || localStorage.getItem("deckbuilder:auth_token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return fetch("/api/admin/analytics", { headers }).then(r => r.json()).then(d => { if (d.error) throw new Error(d.error); return d; });
+  },
+
   // Forum
   getForumCategories: () => request("GET", "/forum/categories"),
   getForumTopics: (categoryId, page = 1) => request("GET", `/forum/categories/${categoryId}/topics?page=${page}`),

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { COLOR_HEX } from "../lib/constants.js";
+import AnalyticsPanel from "./AnalyticsPanel.jsx";
 import { countEntries } from "../lib/deckRules.js";
 
 const ADMIN_API = "/api/admin";
@@ -658,6 +659,7 @@ export default function AdminPanel({ embedded = false }) {
         <button className={`ab-tab ${tab === "users" ? "is-active" : ""}`} onClick={() => switchTab("users")}>Usuários</button>
         <button className={`ab-tab ${tab === "decks" ? "is-active" : ""}`} onClick={() => switchTab("decks")}>Decks</button>
         <button className={`ab-tab ${tab === "cards" ? "is-active" : ""}`} onClick={() => switchTab("cards")}>Cartas</button>
+        <button className={`ab-tab ${tab === "analytics" ? "is-active" : ""}`} onClick={() => switchTab("analytics")}>Analytics</button>
       </nav>
 
       <main className="ab-main ab-admin-main">
@@ -665,6 +667,7 @@ export default function AdminPanel({ embedded = false }) {
         {tab === "users" && <UsersTable users={users} onDelete={deleteUser} loading={loading} />}
         {tab === "decks" && <DecksTable decks={decks} onDelete={deleteDeck} loading={loading} />}
         {tab === "cards" && <CardManager cards={cards} meta={cardMeta} onReload={loadCards} flash={flash} />}
+        {tab === "analytics" && <AnalyticsPanel />}
       </main>
     </div>
   );

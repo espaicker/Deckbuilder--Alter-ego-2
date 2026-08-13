@@ -2485,3 +2485,17 @@
   border: 3px solid var(--border-color);
   background: var(--shadow-color);
 }
+
+/* ---------- ANALYTICS ---------- */
+.ab-analytics { max-width: 900px; }
+.ab-analytics-section {
+  margin-top: 20px;
+}
+.ab-analytics-winrate {
+  display: inline-block;
+  padding: 2px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: linear-gradient(90deg, var(--yellow) var(--wr, 50%), transparent var(--wr, 50%));
+  border: 2px solid var(--border-color);
+}

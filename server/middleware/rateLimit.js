@@ -38,3 +38,10 @@ export const adminLoginLimiter = makeLimiter({
   max: 5,
   message: "Muitas tentativas de login administrativo. Tente novamente em alguns minutos.",
 });
+
+// Fórum: 5 postagens por minuto por IP (anti-flood)
+export const forumPostLimiter = makeLimiter({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: "Muitas postagens em pouco tempo. Aguarde um momento antes de postar novamente.",
+});

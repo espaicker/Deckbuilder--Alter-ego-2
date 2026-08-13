@@ -109,6 +109,22 @@ export const api = {
 
   updateProfile: (bio) => request("PUT", "/profile", { bio }),
 
+  // Forum
+  getForumCategories: () => request("GET", "/forum/categories"),
+  getForumTopics: (categoryId, page = 1) => request("GET", `/forum/categories/${categoryId}/topics?page=${page}`),
+  getForumTopic: (topicId) => request("GET", `/forum/topics/${topicId}`),
+  createForumTopic: (categoryId, title, body) => request("POST", `/forum/categories/${categoryId}/topics`, { title, body }),
+  createForumReply: (topicId, body) => request("POST", `/forum/topics/${topicId}/replies`, { body }),
+  reportForumContent: (data) => request("POST", "/forum/reports", data),
+  hideForumTopic: (topicId) => request("POST", `/forum/topics/${topicId}/hide`),
+  hideForumReply: (replyId) => request("POST", `/forum/replies/${replyId}/hide`),
+  deleteForumTopic: (topicId) => request("DELETE", `/forum/topics/${topicId}`),
+  deleteForumReply: (replyId) => request("DELETE", `/forum/replies/${replyId}`),
+  lockForumTopic: (topicId) => request("POST", `/forum/topics/${topicId}/lock`),
+  pinForumTopic: (topicId) => request("POST", `/forum/topics/${topicId}/pin`),
+  getForumReports: () => request("GET", "/forum/reports"),
+  resolveForumReport: (reportId, status) => request("PUT", `/forum/reports/${reportId}`, { status }),
+
   uploadAvatar: async (file) => {
     const formData = new FormData();
     formData.append("avatar", file);

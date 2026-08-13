@@ -210,6 +210,71 @@ export async function initDb() {
       ON point_history(user_id, points_awarded);
   `);
 
+  // Forum tables
+  wrapper.exec(`
+    CREATE TABLE IF NOT EXISTS forum_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS forum_topics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_id INTEGER NOT NULL,
+      author_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      is_pinned INTEGER NOT NULL DEFAULT 0,
+      is_locked INTEGER NOT NULL DEFAULT 0,
+      is_hidden INTEGER NOT NULL DEFAULT 0,
+      reply_count INTEGER NOT NULL DEFAULT 0,
+      last_reply_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (category_id) REFERENCES forum_categories(id) ON DELETE CASCADE,
+      FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS forum_replies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      topic_id INTEGER NOT NULL,
+      author_id INTEGER NOT NULL,
+      body TEXT NOT NULL,
+      is_hidden INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (topic_id) REFERENCES forum_topics(id) ON DELETE CASCADE,
+      FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS forum_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reporter_id INTEGER NOT NULL,
+      topic_id INTEGER,
+      reply_id INTEGER,
+      reason TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente','resolvido','rejeitado')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (topic_id) REFERENCES forum_topics(id) ON DELETE SET NULL,
+      FOREIGN KEY (reply_id) REFERENCES forum_replies(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_forum_topics_category ON forum_topics(category_id);
+    CREATE INDEX IF NOT EXISTS idx_forum_topics_author ON forum_topics(author_id);
+    CREATE INDEX IF NOT EXISTS idx_forum_replies_topic ON forum_replies(topic_id);
+    CREATE INDEX IF NOT EXISTS idx_forum_reports_status ON forum_reports(status);
+  `);
+
+  // Seed default categories if empty
+  const catCount = wrapper.prepare("SELECT COUNT(*) AS cnt FROM forum_categories").get();
+  if (catCount && catCount.cnt === 0) {
+    wrapper.prepare("INSERT INTO forum_categories (name, description, sort_order) VALUES (?, ?, ?)").run("Geral", "Discussões gerais sobre o jogo", 1);
+    wrapper.prepare("INSERT INTO forum_categories (name, description, sort_order) VALUES (?, ?, ?)").run("Estratégia", "Dicas de deck building e combos", 2);
+    wrapper.prepare("INSERT INTO forum_categories (name, description, sort_order) VALUES (?, ?, ?)").run("Torneios", "Discussões sobre torneios e competições", 3);
+    wrapper.prepare("INSERT INTO forum_categories (name, description, sort_order) VALUES (?, ?, ?)").run("Bug Reports", "Reporte problemas encontrados", 4);
+  }
+
   // Migration: add bio and avatar_url columns if missing
   try {
     wrapper.exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''");

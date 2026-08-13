@@ -18,7 +18,7 @@ export function requireAuth(req, res, next) {
   const token = header.slice(7);
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    req.user = { id: payload.sub, username: payload.username };
+    req.user = { id: payload.sub, username: payload.username, role: payload.role || null };
     next();
   } catch (err) {
     return res.status(401).json({ error: "Token inválido ou expirado." });
@@ -33,7 +33,7 @@ export function optionalAuth(req, res, next) {
   if (header && header.startsWith("Bearer ")) {
     try {
       const payload = jwt.verify(header.slice(7), JWT_SECRET);
-      req.user = { id: payload.sub, username: payload.username };
+      req.user = { id: payload.sub, username: payload.username, role: payload.role || null };
     } catch {
       // Token inválido — ignora
     }

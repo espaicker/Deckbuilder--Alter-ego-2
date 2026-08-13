@@ -147,6 +147,8 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
   const [myDecks, setMyDecks] = useState([]);
   const [selectedDeckId, setSelectedDeckId] = useState("");
   const [registering, setRegistering] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null); // track which action is in progress
+  const [reportingMatchId, setReportingMatchId] = useState(null);
 
   useEffect(() => {
     loadTournament();
@@ -188,72 +190,93 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
   }
 
   async function handleUnregister() {
+    setActionLoading("unregister");
     try {
       await api.unregisterFromTournament(tournamentId);
       flashToast("Inscrição cancelada.");
       loadTournament();
     } catch (err) {
       flashToast(err.message);
+    } finally {
+      setActionLoading(null);
     }
   }
 
   async function handleDrop() {
+    setActionLoading("drop");
     try {
       await api.dropFromTournament(tournamentId);
       flashToast("Drop registrado.");
       loadTournament();
     } catch (err) {
       flashToast(err.message);
+    } finally {
+      setActionLoading(null);
     }
   }
 
   async function handleStart() {
+    setActionLoading("start");
     try {
       await api.startTournament(tournamentId);
       flashToast("Torneio iniciado!");
       loadTournament();
     } catch (err) {
       flashToast(err.message);
+    } finally {
+      setActionLoading(null);
     }
   }
 
   async function handleNextRound() {
+    setActionLoading("nextRound");
     try {
       const res = await api.nextRound(tournamentId);
       flashToast(res.message);
       loadTournament();
     } catch (err) {
       flashToast(err.message);
+    } finally {
+      setActionLoading(null);
     }
   }
 
   async function handleStartTopCut() {
+    setActionLoading("topcut");
     try {
       const res = await api.startTopCut(tournamentId);
       flashToast(res.message);
       loadTournament();
     } catch (err) {
       flashToast(err.message);
+    } finally {
+      setActionLoading(null);
     }
   }
 
   async function handleCancel() {
+    setActionLoading("cancel");
     try {
       await api.cancelTournament(tournamentId);
       flashToast("Torneio cancelado.");
       loadTournament();
     } catch (err) {
       flashToast(err.message);
+    } finally {
+      setActionLoading(null);
     }
   }
 
   async function handleReportResult(matchId, result) {
+    setReportingMatchId(matchId);
     try {
       await api.reportMatchResult(tournamentId, matchId, result);
       flashToast("Resultado registrado.");
       loadTournament();
     } catch (err) {
       flashToast(err.message);
+    } finally {
+      setReportingMatchId(null);
     }
   }
 
@@ -353,8 +376,8 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
           {canUnregister && (
             <div className="ab-tournament-registered">
               <span className="ab-tournament-registered-badge">✓ Você está inscrito</span>
-              <button className="ab-btn ab-btn-ghost" onClick={handleUnregister}>
-                Cancelar inscrição
+              <button className="ab-btn ab-btn-ghost" onClick={handleUnregister} disabled={!!actionLoading}>
+                {actionLoading === "unregister" ? "Cancelando…" : "Cancelar inscrição"}
               </button>
             </div>
           )}
@@ -364,8 +387,8 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
       {canDrop && (
         <div className="ab-tournament-registered">
           <span className="ab-tournament-registered-badge">✓ Você está participando</span>
-          <button className="ab-btn ab-btn-ghost" onClick={handleDrop}>
-            Dar drop (desistir)
+          <button className="ab-btn ab-btn-ghost" onClick={handleDrop} disabled={!!actionLoading}>
+            {actionLoading === "drop" ? "Saindo…" : "Dar drop (desistir)"}
           </button>
         </div>
       )}
@@ -377,26 +400,26 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
           <div className="ab-tournament-organizer-actions">
             {t.status === "inscricao" && (
               <>
-                <button className="ab-btn ab-btn-primary" onClick={handleStart}>
-                  Iniciar torneio
+                <button className="ab-btn ab-btn-primary" onClick={handleStart} disabled={!!actionLoading}>
+                  {actionLoading === "start" ? "Iniciando…" : "Iniciar torneio"}
                 </button>
-                <button className="ab-btn ab-btn-ghost" onClick={handleCancel}>
-                  Cancelar torneio
+                <button className="ab-btn ab-btn-ghost" onClick={handleCancel} disabled={!!actionLoading}>
+                  {actionLoading === "cancel" ? "Cancelando…" : "Cancelar torneio"}
                 </button>
               </>
             )}
             {t.status === "em_andamento" && (
               <>
-                <button className="ab-btn ab-btn-primary" onClick={handleNextRound}>
-                  Próxima rodada
+                <button className="ab-btn ab-btn-primary" onClick={handleNextRound} disabled={!!actionLoading}>
+                  {actionLoading === "nextRound" ? "Gerando…" : "Próxima rodada"}
                 </button>
                 {t.format === "swiss_topcut" && t.current_round >= t.round_count && (
-                  <button className="ab-btn ab-btn-accent" onClick={handleStartTopCut}>
-                    Avançar para mata-mata
+                  <button className="ab-btn ab-btn-accent" onClick={handleStartTopCut} disabled={!!actionLoading}>
+                    {actionLoading === "topcut" ? "Avançando…" : "Avançar para mata-mata"}
                   </button>
                 )}
-                <button className="ab-btn ab-btn-ghost" onClick={handleCancel}>
-                  Cancelar torneio
+                <button className="ab-btn ab-btn-ghost" onClick={handleCancel} disabled={!!actionLoading}>
+                  {actionLoading === "cancel" ? "Cancelando…" : "Cancelar torneio"}
                 </button>
               </>
             )}

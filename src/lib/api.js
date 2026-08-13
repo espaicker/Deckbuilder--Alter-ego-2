@@ -103,4 +103,20 @@ export const api = {
   },
 
   getRankingHistory: (userId) => request("GET", `/ranking/${userId}/history`),
+
+  // Profile
+  getProfile: (username) => request("GET", `/profile/${encodeURIComponent(username)}`),
+
+  updateProfile: (bio) => request("PUT", "/profile", { bio }),
+
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    const token = localStorage.getItem("deckbuilder:auth_token");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch("/api/profile/avatar", { method: "POST", headers, body: formData });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
+    return data;
+  },
 };

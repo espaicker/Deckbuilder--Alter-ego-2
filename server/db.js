@@ -210,6 +210,14 @@ export async function initDb() {
       ON point_history(user_id, points_awarded);
   `);
 
+  // Migration: add bio and avatar_url columns if missing
+  try {
+    wrapper.exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''");
+  } catch (e) { /* already exists */ }
+  try {
+    wrapper.exec("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL");
+  } catch (e) { /* already exists */ }
+
   // Migration: add is_official column if missing
   try {
     wrapper.exec("ALTER TABLE tournaments ADD COLUMN is_official INTEGER NOT NULL DEFAULT 0");

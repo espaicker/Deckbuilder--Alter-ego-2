@@ -3,6 +3,7 @@ import DecklistsTab from "./DecklistsTab.jsx";
 import TournamentsTab from "./TournamentsTab.jsx";
 import ForumTab from "./ForumTab.jsx";
 import RankingTab from "./RankingTab.jsx";
+import ProfilePage from "./ProfilePage.jsx";
 
 const SUBTABS = [
   ["decklists", "Decklists"],
@@ -13,6 +14,20 @@ const SUBTABS = [
 
 export default function CommunityPage({ user, alterEgo, mainDeck, dropPile, flashToast, onRequestLogin }) {
   const [subtab, setSubtab] = useState("decklists");
+  const [viewingProfile, setViewingProfile] = useState(null);
+
+  if (viewingProfile) {
+    return (
+      <div className="ab-community-page">
+        <ProfilePage
+          username={viewingProfile}
+          user={user}
+          flashToast={flashToast}
+          onBack={() => setViewingProfile(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="ab-community-page">
@@ -49,7 +64,7 @@ export default function CommunityPage({ user, alterEgo, mainDeck, dropPile, flas
         )}
 
         {subtab === "ranking" && (
-          <RankingTab />
+          <RankingTab onViewProfile={(username) => setViewingProfile(username)} />
         )}
 
         {subtab === "forum" && (

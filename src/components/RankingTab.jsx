@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../lib/api.js";
 
-export default function RankingTab() {
+export default function RankingTab({ onViewProfile }) {
   const [ranking, setRanking] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -161,7 +161,7 @@ export default function RankingTab() {
                       {r.position}
                     </span>
                   </td>
-                  <td><strong>{r.username}</strong></td>
+                  <td><button className="ab-link-btn" onClick={() => onViewProfile && onViewProfile(r.username)}><strong>{r.username}</strong></button></td>
                   <td>{r.total_points}</td>
                   <td>{r.tournaments_played}</td>
                   <td>{r.winrate}%</td>

@@ -1,29 +1,19 @@
 import { Router } from "express";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "fs";
+import { existsSync, mkdirSync, unlinkSync } from "fs";
+import multer from "multer";
+import sharp from "sharp";
 import { fileURLToPath } from "url";
 import { dirname, join, extname } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const AVATAR_DIR = join(__dirname, "../../public/assets/avatars");
-const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2MB
-const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const MAGIC_BYTES = {
-  "image/jpeg": [0xFF, 0xD8, 0xFF],
-  "image/png": [0x89, 0x50, 0x4E, 0x47],
-  "image/webp": null, // checked via RIFF header
-};
+const AVATAR_SIZE = 256; // px, square crop
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 
 const router = Router();
 
-function detectMime(buffer) {
-  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return "image/jpeg";
-  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return "image/png";
-  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
-      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) return "image/webp";
-  return null;
-}
 
 /**
  * GET /api/profile/:username — Perfil público com heurísticas
@@ -194,80 +184,49 @@ router.put("/", requireAuth, (req, res) => {
 });
 
 /**
- * POST /api/profile/avatar — Upload de avatar (autenticado)
- * Validação real de MIME via magic bytes (não confia no Content-Type do cliente)
+ * POST /api/profile/avatar — Upload de avatar com multer + sharp
+ * Reprocessa para 256x256 JPEG (elimina metadados, valida conteudo real)
  */
-router.post("/avatar", requireAuth, (req, res) => {
-  const contentType = req.headers["content-type"] || "";
-  if (!contentType.includes("multipart/form-data")) {
-    return res.status(400).json({ error: "Envie como multipart/form-data." });
-  }
-
-  const chunks = [];
-  let size = 0;
-
-  req.on("data", (chunk) => {
-    size += chunk.length;
-    if (size > MAX_AVATAR_SIZE) { req.destroy(); return; }
-    chunks.push(chunk);
-  });
-
-  req.on("end", () => {
-    if (size > MAX_AVATAR_SIZE) {
-      return res.status(413).json({ error: "Imagem muito grande (max 2MB)." });
+router.post("/avatar", requireAuth, upload.single("avatar"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhuma imagem enviada." });
     }
 
-    const raw = Buffer.concat(chunks);
-    const boundary = contentType.split("boundary=")[1];
-    if (!boundary) return res.status(400).json({ error: "Boundary não encontrado." });
-
-    const parts = raw.toString("binary").split("--" + boundary);
-    let imageBuffer = null;
-
-    for (const part of parts) {
-      if (part.includes("Content-Disposition") && part.includes('name="avatar"')) {
-        const headerEnd = part.indexOf("\r\n\r\n");
-        if (headerEnd === -1) continue;
-        const body = part.slice(headerEnd + 4).replace(/\r\n$/, "");
-        imageBuffer = Buffer.from(body, "binary");
-      }
+    // sharp tenta decodificar — se nao for imagem real, lanca erro
+    let processed;
+    try {
+      processed = await sharp(req.file.buffer)
+        .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: "cover", position: "centre" })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+    } catch (imgErr) {
+      return res.status(400).json({ error: "Arquivo invalido. Envie uma imagem real (JPG, PNG ou WebP)." });
     }
 
-    if (!imageBuffer || imageBuffer.length < 8) {
-      return res.status(400).json({ error: "Nenhuma imagem encontrada no upload." });
-    }
-
-    // CRITICAL: Validate actual file content via magic bytes (not Content-Type header)
-    const detectedMime = detectMime(imageBuffer);
-    if (!detectedMime || !ALLOWED_MIME.has(detectedMime)) {
-      return res.status(400).json({ error: "Tipo de arquivo inválido. Apenas JPG, PNG ou WebP reais são aceitos." });
-    }
-
-    // Save
     if (!existsSync(AVATAR_DIR)) mkdirSync(AVATAR_DIR, { recursive: true });
 
-    const ext = detectedMime === "image/jpeg" ? ".jpg" : detectedMime === "image/png" ? ".png" : ".webp";
-    const filename = `user-${req.user.id}${ext}`;
+    const filename = ${req.user.id}.jpg;
     const filepath = join(AVATAR_DIR, filename);
 
-    // Remove old avatar if exists (different extension)
-    [".jpg", ".png", ".webp"].forEach(e => {
-      const old = join(AVATAR_DIR, `user-${req.user.id}${e}`);
-      if (existsSync(old) && old !== filepath) {
-        try { unlinkSync(old); } catch {}
-      }
+    // Remove avatar antigo com extensao diferente se existir
+    [".png", ".webp"].forEach(ext => {
+      const old = join(AVATAR_DIR, ${req.user.id});
+      if (existsSync(old)) try { unlinkSync(old); } catch {}
     });
 
-    writeFileSync(filepath, imageBuffer);
-    const avatarUrl = `/assets/avatars/${filename}`;
+    // Salva JPEG reprocessado (nunca o original)
+    const { writeFileSync } = await import("fs");
+    writeFileSync(filepath, processed);
+
+    const avatarUrl = /assets/avatars/;
     req.db.prepare("UPDATE users SET avatar_url = ? WHERE id = ?").run(avatarUrl, req.user.id);
 
     res.json({ message: "Avatar atualizado!", avatar_url: avatarUrl });
-  });
-
-  req.on("error", () => {
-    res.status(500).json({ error: "Erro ao processar upload." });
-  });
+  } catch (err) {
+    console.error("[profile] avatar upload error:", err);
+    res.status(500).json({ error: "Erro ao processar avatar." });
+  }
 });
 
 export default router;

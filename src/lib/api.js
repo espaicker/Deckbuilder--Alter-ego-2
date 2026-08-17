@@ -95,6 +95,8 @@ export const api = {
 
   cancelTournament: (id) => request("POST", `/tournaments/${id}/cancel`),
 
+  setTournamentRanked: (id, isRanked) => request("PATCH", `/tournaments/${id}/ranked`, { is_ranked: isRanked }),
+
   // Ranking
   getRanking: (page = 1, limit = 50, search = "") => {
     const params = new URLSearchParams({ page, limit });

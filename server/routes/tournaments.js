@@ -100,6 +100,10 @@ function insertMatches(db, tournamentId, roundId, matches) {
 function distributePoints(db, tournament) {
   if (!tournament.is_official) return;
 
+  // Protection: don't distribute points if already done for this tournament
+  const existing = db.prepare("SELECT COUNT(*) AS cnt FROM point_history WHERE tournament_id = ?").get(tournament.id);
+  if (existing && existing.cnt > 0) return; // points already distributed
+
   const insertPt = db.prepare(
     "INSERT INTO point_history (user_id, tournament_id, points_awarded, reason) VALUES (?, ?, ?, ?)"
   );
@@ -595,6 +599,27 @@ router.post("/:id/cancel", requireAuth, (req, res) => {
   }
   req.db.prepare("UPDATE tournaments SET status = 'cancelado' WHERE id = ?").run(tournament.id);
   res.json({ message: "Torneio cancelado." });
+});
+
+
+/* ============================================================
+   MARCAR COMO OFICIAL (admin only)
+   ============================================================ */
+
+router.patch("/:id/ranked", requireAuth, (req, res) => {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "Apenas administradores podem marcar torneios como oficiais." });
+  }
+  const tournament = req.db.prepare("SELECT * FROM tournaments WHERE id = ?").get(req.params.id);
+  if (!tournament) return res.status(404).json({ error: "Torneio nao encontrado." });
+  if (tournament.status !== "inscricao") {
+    return res.status(409).json({ error: "So e possivel alterar antes do torneio comecar." });
+  }
+
+  const { is_ranked } = req.body || {};
+  const value = is_ranked ? 1 : 0;
+  req.db.prepare("UPDATE tournaments SET is_official = ? WHERE id = ?").run(value, tournament.id);
+  res.json({ message: value ? "Torneio marcado como oficial." : "Torneio desmarcado como oficial.", is_ranked: !!value });
 });
 
 export default router;

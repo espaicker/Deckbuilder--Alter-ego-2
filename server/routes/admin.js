@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { computeMetaStats } from "../lib/metaAnalytics.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET, JWT_EXPIRES_IN } from "../middleware/auth.js";
@@ -285,4 +286,54 @@ router.get("/analytics", requireAdmin, (req, res) => {
   }
 });
 
+
+/**
+ * GET /api/admin/analytics/meta — Meta analytics (cartas + arquetipos)
+ * Query: rankedOnly=true|false (default true)
+ */
+router.get("/analytics/meta", requireAdmin, (req, res) => {
+  try {
+    const rankedOnly = req.query.rankedOnly !== "false";
+    const whereClause = rankedOnly ? "AND t.is_official = 1" : "";
+
+    // Build deckParticipations from DB
+    const rows = req.db.prepare(
+      SELECT tp.id AS tp_id, cd.main_deck, cd.alter_ego_id,
+        SUM(CASE WHEN (tm.player1_id = tp.id AND tm.result = 'player1') OR (tm.player2_id = tp.id AND tm.result = 'player2') OR (tm.result = 'bye' AND tm.player1_id = tp.id) THEN 1 ELSE 0 END) AS wins,
+        SUM(CASE WHEN (tm.player1_id = tp.id AND tm.result = 'player2') OR (tm.player2_id = tp.id AND tm.result = 'player1') THEN 1 ELSE 0 END) AS losses,
+        SUM(CASE WHEN tm.result = 'draw' THEN 1 ELSE 0 END) AS draws
+      FROM tournament_players tp
+      JOIN tournaments t ON t.id = tp.tournament_id AND t.status = 'finalizado' 
+      JOIN community_decks cd ON cd.id = tp.deck_id
+      JOIN tournament_matches tm ON tm.tournament_id = t.id AND (tm.player1_id = tp.id OR tm.player2_id = tp.id) AND tm.result != 'pending'
+      GROUP BY tp.id
+    ).all();
+
+    const deckParticipations = rows.map(r => ({
+      mainDeck: r.main_deck,
+      alterEgoId: r.alter_ego_id,
+      wins: r.wins || 0,
+      losses: r.losses || 0,
+      draws: r.draws || 0,
+    }));
+
+    // Load card index
+    const { readFileSync } = await import("fs");
+    const { fileURLToPath } = await import("url");
+    const { dirname, join } = await import("path");
+    const __filename2 = fileURLToPath(import.meta.url);
+    const __dirname2 = dirname(__filename2);
+    let cardIndex = new Map();
+    try {
+      const cardsData = JSON.parse(readFileSync(join(__dirname2, "../../src/data/modelo_cartas.json"), "utf8"));
+      cardIndex = new Map(cardsData.cards.map(c => [c.id, c]));
+    } catch {}
+
+    const result = computeMetaStats({ deckParticipations, cardIndex });
+    res.json(result);
+  } catch (err) {
+    console.error("[admin/analytics/meta] error:", err);
+    res.status(500).json({ error: "Erro ao calcular meta analytics." });
+  }
+});
 export default router;

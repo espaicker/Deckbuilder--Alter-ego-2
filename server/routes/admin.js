@@ -6,6 +6,11 @@ import { JWT_SECRET, JWT_EXPIRES_IN } from "../middleware/auth.js";
 import { getAdminCredentials } from "../secrets.js";
 import { adminLoginLimiter } from "../middleware/rateLimit.js";
 
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const router = Router();
 
 // Credenciais de admin: vêm de ADMIN_USERNAME/ADMIN_PASSWORD (env) ou são
@@ -291,23 +296,22 @@ router.get("/analytics", requireAdmin, (req, res) => {
  * GET /api/admin/analytics/meta — Meta analytics (cartas + arquetipos)
  * Query: rankedOnly=true|false (default true)
  */
-router.get("/analytics/meta", requireAdmin, (req, res) => {
+router.get("/analytics/meta", requireAdmin, async (req, res) => {
   try {
     const rankedOnly = req.query.rankedOnly !== "false";
     const whereClause = rankedOnly ? "AND t.is_official = 1" : "";
 
-    // Build deckParticipations from DB
-    const rows = req.db.prepare(
+﻿    const rows = req.db.prepare(`
       SELECT tp.id AS tp_id, cd.main_deck, cd.alter_ego_id,
         SUM(CASE WHEN (tm.player1_id = tp.id AND tm.result = 'player1') OR (tm.player2_id = tp.id AND tm.result = 'player2') OR (tm.result = 'bye' AND tm.player1_id = tp.id) THEN 1 ELSE 0 END) AS wins,
         SUM(CASE WHEN (tm.player1_id = tp.id AND tm.result = 'player2') OR (tm.player2_id = tp.id AND tm.result = 'player1') THEN 1 ELSE 0 END) AS losses,
         SUM(CASE WHEN tm.result = 'draw' THEN 1 ELSE 0 END) AS draws
       FROM tournament_players tp
-      JOIN tournaments t ON t.id = tp.tournament_id AND t.status = 'finalizado' 
+      JOIN tournaments t ON t.id = tp.tournament_id AND t.status = 'finalizado' ${whereClause}
       JOIN community_decks cd ON cd.id = tp.deck_id
       JOIN tournament_matches tm ON tm.tournament_id = t.id AND (tm.player1_id = tp.id OR tm.player2_id = tp.id) AND tm.result != 'pending'
       GROUP BY tp.id
-    ).all();
+    `).all();
 
     const deckParticipations = rows.map(r => ({
       mainDeck: r.main_deck,
@@ -317,16 +321,15 @@ router.get("/analytics/meta", requireAdmin, (req, res) => {
       draws: r.draws || 0,
     }));
 
-    // Load card index
+    const { join } = await import("path");
     const { readFileSync } = await import("fs");
-    const { fileURLToPath } = await import("url");
-    const { dirname, join } = await import("path");
-    const __filename2 = fileURLToPath(import.meta.url);
-    const __dirname2 = dirname(__filename2);
     let cardIndex = new Map();
     try {
-      const cardsData = JSON.parse(readFileSync(join(__dirname2, "../../src/data/modelo_cartas.json"), "utf8"));
-      cardIndex = new Map(cardsData.cards.map(c => [c.id, c]));
+      const { fileURLToPath: fu } = await import("url");
+      const { dirname: dn } = await import("path");
+      const cardsPath = join(dn(fu(import.meta.url)), "../../src/data/modelo_cartas.json");
+      const cardsData = JSON.parse(readFileSync(cardsPath, "utf8"));
+      cardIndex = new Map(cardsData.cards.map(c2 => [c2.id, c2]));
     } catch {}
 
     const result = computeMetaStats({ deckParticipations, cardIndex });

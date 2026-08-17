@@ -240,11 +240,10 @@ export default function DeckBuilder() {
   // Route → Tab mapping
   const getTabFromPath = useCallback((path) => {
     if (path === "/" || path === "") return "inicio";
-    if (path.startsWith("/deck")) return "alterego";
-    if (path === "/deck/alterego") return "alterego";
     if (path === "/deck/montar") return "deck";
     if (path === "/deck/drops") return "drops";
     if (path === "/deck/resumo") return "resumo";
+    if (path === "/deck/alterego" || path === "/deck" || path.startsWith("/deck")) return "alterego";
     if (path === "/catalogo") return "catalogo";
     if (path.startsWith("/comunidade")) return "comunidade";
     if (path.startsWith("/admin")) return "admin";

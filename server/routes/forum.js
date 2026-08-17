@@ -108,8 +108,8 @@ router.post("/categories/:categoryId/topics", requireAuth, forumPostLimiter, (re
     }
 
     // XSS Sanitization
-    const safeTitle = sanitizeHtml(title.trim());
-    const safeBody = sanitizeHtml(body.trim());
+    const safeTitle = title.trim();
+    const safeBody = body.trim();
 
     const result = req.db.prepare(`
       INSERT INTO forum_topics (category_id, author_id, title, body)
@@ -172,7 +172,7 @@ router.post("/topics/:topicId/replies", requireAuth, forumPostLimiter, (req, res
       return res.status(400).json({ error: `Resposta muito longa (máx. ${MAX_BODY_LENGTH} caracteres).` });
     }
 
-    const safeBody = sanitizeHtml(body.trim());
+    const safeBody = body.trim();
 
     const result = req.db.prepare(`
       INSERT INTO forum_replies (topic_id, author_id, body) VALUES (?, ?, ?)
@@ -204,7 +204,7 @@ router.post("/reports", requireAuth, (req, res) => {
       return res.status(400).json({ error: "Informe o tópico ou resposta a denunciar." });
     }
 
-    const safeReason = sanitizeHtml(reason.trim().slice(0, MAX_REASON_LENGTH));
+    const safeReason = reason.trim().slice(0, MAX_REASON_LENGTH);
 
     req.db.prepare(`
       INSERT INTO forum_reports (reporter_id, topic_id, reply_id, reason) VALUES (?, ?, ?, ?)

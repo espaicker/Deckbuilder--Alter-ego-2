@@ -206,12 +206,12 @@ router.post("/avatar", requireAuth, upload.single("avatar"), async (req, res) =>
 
     if (!existsSync(AVATAR_DIR)) mkdirSync(AVATAR_DIR, { recursive: true });
 
-    const filename = ${req.user.id}.jpg;
+    const filename = `${req.user.id}.jpg`;
     const filepath = join(AVATAR_DIR, filename);
 
     // Remove avatar antigo com extensao diferente se existir
     [".png", ".webp"].forEach(ext => {
-      const old = join(AVATAR_DIR, ${req.user.id});
+      const old = join(AVATAR_DIR, `${req.user.id}${ext}`);
       if (existsSync(old)) try { unlinkSync(old); } catch {}
     });
 
@@ -219,7 +219,7 @@ router.post("/avatar", requireAuth, upload.single("avatar"), async (req, res) =>
     const { writeFileSync } = await import("fs");
     writeFileSync(filepath, processed);
 
-    const avatarUrl = /assets/avatars/;
+    const avatarUrl = `/assets/avatars/${filename}`;
     req.db.prepare("UPDATE users SET avatar_url = ? WHERE id = ?").run(avatarUrl, req.user.id);
 
     res.json({ message: "Avatar atualizado!", avatar_url: avatarUrl });

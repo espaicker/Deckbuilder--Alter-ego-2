@@ -52,3 +52,11 @@ export const passwordResetLimiter = makeLimiter({
   max: 5,
   message: "Muitas tentativas. Tente novamente em alguns minutos.",
 });
+
+// Exclusao de conta (LGPD, Fase 9): acao sensivel e repetivel — limita
+// tentativas de adivinhacao de senha na rota de apagar conta.
+export const accountDeletionLimiter = makeLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Muitas tentativas. Tente novamente em alguns minutos.",
+});

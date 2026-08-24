@@ -57,8 +57,8 @@ export function useAuth() {
     return data.user;
   }, []);
 
-  const register = useCallback(async (username, password) => {
-    const data = await api.register(username, password);
+  const register = useCallback(async (username, password, email, acceptedTerms) => {
+    const data = await api.register(username, password, email, acceptedTerms);
     setToken(data.token);
     localStorage.setItem("deckbuilder:auth_user", JSON.stringify(data.user));
     setUser(data.user);

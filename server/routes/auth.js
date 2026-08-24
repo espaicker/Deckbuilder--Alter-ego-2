@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { randomBytes, createHash } from "crypto";
 import { JWT_SECRET, JWT_EXPIRES_IN, requireAuth } from "../middleware/auth.js";
-import { loginLimiter, registerLimiter, passwordResetLimiter } from "../middleware/rateLimit.js";
+import { loginLimiter, registerLimiter, passwordResetLimiter, accountDeletionLimiter } from "../middleware/rateLimit.js";
 import { sendEmail } from "../lib/email.js";
 
 const router = Router();
@@ -24,7 +24,7 @@ function hashToken(token) {
 
 router.post("/register", registerLimiter, async (req, res) => {
   try {
-    const { username, password, email } = req.body || {};
+    const { username, password, email, accepted_terms } = req.body || {};
 
     if (!username || !USERNAME_RE.test(username)) {
       return res.status(400).json({
@@ -38,6 +38,10 @@ router.post("/register", registerLimiter, async (req, res) => {
       return res.status(400).json({ error: "E-mail inválido." });
     }
     const normalizedEmail = email.trim().toLowerCase();
+    // LGPD (Fase 9): consentimento explicito e obrigatorio para cadastro.
+    if (accepted_terms !== true) {
+      return res.status(400).json({ error: "Voce precisa ler e aceitar os Termos de Uso e a Politica de Privacidade." });
+    }
     if (!password || password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
       return res.status(400).json({
         error: `Senha deve ter entre ${MIN_PASSWORD_LENGTH} e ${MAX_PASSWORD_LENGTH} caracteres.`,
@@ -55,9 +59,10 @@ router.post("/register", registerLimiter, async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const now = Date.now();
     const result = req.db.prepare(
-      "INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)"
-    ).run(username, passwordHash, normalizedEmail);
+      "INSERT INTO users (username, password_hash, email, terms_accepted_at) VALUES (?, ?, ?, ?)"
+    ).run(username, passwordHash, normalizedEmail, now);
 
     const token = jwt.sign(
       { sub: result.lastInsertRowid, username },
@@ -204,6 +209,108 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
   } catch (err) {
     console.error("[auth] reset-password error:", err);
     res.status(500).json({ error: "Erro ao redefinir senha." });
+  }
+});
+
+// GET /api/auth/me/export — Direito de acesso (LGPD art. 18): retorna TODO
+// o dado pessoal do usuario logado em um JSON. Nunca expoe dados de outros.
+router.get("/me/export", requireAuth, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = req.db.prepare(
+      "SELECT id, username, email, bio, avatar_url, created_at, terms_accepted_at, is_judge FROM users WHERE id = ?"
+    ).get(userId);
+    if (!user) return res.status(404).json({ error: "Usuario nao encontrado." });
+
+    const decks = req.db.prepare(
+      "SELECT id, name, alter_ego_id, main_deck, drop_pile, description, created_at FROM community_decks WHERE user_id = ?"
+    ).all(userId);
+
+    const tournamentRegistrations = req.db.prepare(
+      `SELECT tp.tournament_id, t.name AS tournament_name, tp.deck_id, tp.dropped, tp.had_bye, tp.joined_at
+       FROM tournament_players tp JOIN tournaments t ON t.id = tp.tournament_id
+       WHERE tp.user_id = ?`
+    ).all(userId);
+
+    const organizedTournaments = req.db.prepare(
+      "SELECT id, name, format, status, created_at FROM tournaments WHERE organizer_id = ?"
+    ).all(userId);
+
+    const pointHistory = req.db.prepare(
+      "SELECT tournament_id, points_awarded, reason, created_at FROM point_history WHERE user_id = ?"
+    ).all(userId);
+
+    const forumTopics = req.db.prepare(
+      "SELECT id, category_id, title, body, created_at FROM forum_topics WHERE author_id = ?"
+    ).all(userId);
+
+    const forumReplies = req.db.prepare(
+      "SELECT id, topic_id, body, created_at FROM forum_replies WHERE author_id = ?"
+    ).all(userId);
+
+    const stores = req.db.prepare(
+      "SELECT id, name, city, state, address, contact_info, approved, created_at FROM stores WHERE owner_user_id = ?"
+    ).all(userId);
+
+    res.json({
+      exported_at: new Date().toISOString(),
+      account: user,
+      published_decks: decks,
+      tournament_registrations: tournamentRegistrations,
+      organized_tournaments: organizedTournaments,
+      point_history: pointHistory,
+      forum_topics: forumTopics,
+      forum_replies: forumReplies,
+      partner_stores: stores,
+    });
+  } catch (err) {
+    console.error("[auth] export error:", err);
+    res.status(500).json({ error: "Erro ao exportar dados." });
+  }
+});
+
+// DELETE /api/auth/me — Direito ao esquecimento (LGPD art. 18).
+// Exige confirmar a senha atual.
+//
+// DECISAO DE DESIGN (anonimizacao, nao exclusao fisica): dados vinculados a
+// torneios finalizados (resultados de partida) e decks publicados fazem parte
+// do historico competitivo de OUTRAS pessoas (ranking, standings). Apaga-los
+// quebraria a integridade historica alheia. Por isso ANONIMIZAMOS a conta:
+//   - username vira "Usuario removido #<id>" (nao mais rastreavel a uma pessoa)
+//   - email e password_hash sao apagados de verdade (dado pessoal sensivel)
+//   - bio/avatar removidos; tokens de reset apagados
+//   - decks/resultados permanecem, mas sem vinculo a uma pessoa identificavel
+// Isso esta documentado tambem na Politica de Privacidade.
+router.delete("/me", accountDeletionLimiter, requireAuth, async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (!password) {
+      return res.status(400).json({ error: "Confirme com sua senha atual para apagar a conta." });
+    }
+    const user = req.db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
+    if (!user) return res.status(404).json({ error: "Usuario nao encontrado." });
+
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) return res.status(401).json({ error: "Senha incorreta." });
+
+    // Senha aleatoria irreversivel — impede login e satisfaz NOT NULL do schema.
+    const deadHash = await bcrypt.hash(randomBytes(32).toString("hex"), 10);
+    const anonUsername = `Usuario removido #${user.id}`;
+
+    req.db.prepare(
+      "UPDATE users SET username = ?, email = NULL, password_hash = ?, bio = '', avatar_url = NULL WHERE id = ?"
+    ).run(anonUsername, deadHash, user.id);
+
+    // Remove tokens de recuperacao pendentes (nao ha mais conta para recuperar).
+    req.db.prepare("DELETE FROM password_reset_tokens WHERE user_id = ?").run(user.id);
+
+    res.json({
+      message: "Conta apagada. Seus dados pessoais (e-mail, senha) foram removidos; o historico de resultados foi anonimizado para preservar a integridade dos torneios de outros jogadores.",
+      anonymized_username: anonUsername,
+    });
+  } catch (err) {
+    console.error("[auth] delete account error:", err);
+    res.status(500).json({ error: "Erro ao apagar conta." });
   }
 });
 

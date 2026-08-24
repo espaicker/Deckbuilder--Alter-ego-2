@@ -109,3 +109,58 @@ tamanho) montado em `/data`. Depois, defina a variável de ambiente
 `DATA_DIR=/data` (o código já está pronto pra isso — veja `.env.example`)
 e faça um novo deploy. A partir daí, os dados sobrevivem a reinícios e
 atualizações normalmente.
+
+## Backup e retencao de dados (LGPD)
+
+Politica simples de backup e retencao. Nao e sofisticada de proposito — o
+importante e existir, estar escrita e ser seguida.
+
+### Backup do banco
+
+- O banco e um unico arquivo `deckbuilder.db` (sql.js) em `DATA_DIR`
+  (em producao, o disco persistente — ex: Persistent Disk do Render).
+- **Frequencia sugerida:** copia diaria do arquivo para um armazenamento
+  separado (fora do mesmo disco/servico). Exemplo manual:
+  ```bash
+  cp "$DATA_DIR/deckbuilder.db" "/backups/deckbuilder-$(date +%F).db"
+  ```
+- **Retencao de backup:** manter as ultimas 30 copias diarias; apagar as
+  mais antigas. Backups contem dado pessoal — guarde em local com acesso
+  restrito e, de preferencia, criptografado.
+- **Restauracao:** parar o servico, substituir `deckbuilder.db` pelo backup,
+  reiniciar. Testar a restauracao periodicamente.
+
+### Retencao de contas inativas
+
+- Dados de conta ativa sao mantidos enquanto a conta existir.
+- **Conta inativa:** sem login por **24 meses** pode ser marcada para
+  remocao. Antes de remover, notificar o titular no e-mail cadastrado com
+  prazo para se manifestar.
+- Remocao de conta inativa segue a **mesma anonimizacao** de
+  `DELETE /api/auth/me`: e-mail/senha apagados, `username` anonimizado,
+  historico competitivo preservado sem vinculo pessoal.
+- Backups antigos que ainda contenham o dado removido expiram naturalmente
+  pela politica de retencao de 30 dias acima.
+
+### Titular quer exportar ou apagar antes disso
+
+Qualquer usuario pode, a qualquer momento, exportar os proprios dados
+("Baixar meus dados") ou apagar a conta pela tela de configuracoes — nao
+depende de solicitacao manual ao administrador.
+
+## Status de npm audit (Fase 9)
+
+Ultima verificacao: 2 alertas restantes, ambos em **dependencias de
+desenvolvimento** (esbuild/vite), nao no runtime do servidor:
+
+- `nanoid` (high): **corrigido** via `npm audit fix` (nao-breaking).
+- `esbuild` / `vite` (1 moderate + 1 high): a unica correcao disponivel e
+  atualizar para `vite@8` (mudanca major/breaking). O alerta do esbuild se
+  refere ao **servidor de desenvolvimento** do Vite, que **nao roda em
+  producao** — em producao servimos apenas o `dist/` estatico ja compilado.
+  Por isso, e para respeitar a estabilidade da stack, mantemos `vite@5` por
+  ora. Reavaliar em uma janela de manutencao dedicada.
+
+Nenhuma vulnerabilidade alta/critica **sem solucao** afeta o codigo de
+runtime do servidor.
+

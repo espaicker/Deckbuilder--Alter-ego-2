@@ -148,6 +148,7 @@ test("E2E API - Full integration test", async (t) => {
       username: "JogadorA",
       password: "senha123",
       email: "jogadora@teste.com",
+      accepted_terms: true,
     });
     assert.equal(status, 201);
     assert.ok(data.token);
@@ -160,6 +161,7 @@ test("E2E API - Full integration test", async (t) => {
       username: "JogadorB",
       password: "senha456",
       email: "jogadorb@teste.com",
+      accepted_terms: true,
     });
     assert.equal(status, 201);
     assert.ok(data.token);
@@ -171,6 +173,7 @@ test("E2E API - Full integration test", async (t) => {
       username: "ProPlayer",
       password: "rankedmaster",
       email: "proplayer@teste.com",
+      accepted_terms: true,
     });
     assert.equal(status, 201);
     tokenC = data.token;
@@ -181,6 +184,7 @@ test("E2E API - Full integration test", async (t) => {
       username: "JogadorA",
       password: "outrasenha",
       email: "outro@teste.com",
+      accepted_terms: true,
     });
     assert.equal(status, 409);
     assert.match(data.error, /já está em uso/);

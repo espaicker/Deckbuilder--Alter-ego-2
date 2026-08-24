@@ -292,6 +292,14 @@ export async function initDb() {
     }
   } catch (e) { /* ignore */ }
 
+  // Migration: add terms_accepted_at (LGPD - evidencia de consentimento, Fase 9)
+  try {
+    const cols = wrapper.prepare("PRAGMA table_info(users)").all();
+    if (!cols.some((col) => col.name === "terms_accepted_at")) {
+      wrapper.exec("ALTER TABLE users ADD COLUMN terms_accepted_at INTEGER");
+    }
+  } catch (e) { /* ignore */ }
+
   // Migration: add is_judge column if missing
   try {
     const cols = wrapper.prepare("PRAGMA table_info(users)").all();

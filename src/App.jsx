@@ -10,6 +10,7 @@ import { useAuth } from "./hooks/useAuth.js";
 import AuthModal from "./components/AuthModal.jsx";
 import CommunityPage from "./components/CommunityPage.jsx";
 import AdminPanel from "./components/AdminPanel.jsx";
+import LegalPage from "./components/LegalPage.jsx";
 import AnalyticsPanel from "./components/AnalyticsPanel.jsx";
 
 const { mainDeckSize: MAIN_DECK_SIZE, dropPileSize: DROP_PILE_SIZE, maxCopies: MAX_COPIES } = DECK_RULES;
@@ -240,6 +241,8 @@ export default function DeckBuilder() {
   // Route → Tab mapping
   const getTabFromPath = useCallback((path) => {
     if (path === "/" || path === "") return "inicio";
+    if (path === "/privacidade") return "privacidade";
+    if (path === "/termos") return "termos";
     if (path === "/deck/montar") return "deck";
     if (path === "/deck/drops") return "drops";
     if (path === "/deck/resumo") return "resumo";
@@ -260,6 +263,8 @@ export default function DeckBuilder() {
       case "catalogo": return "/catalogo";
       case "comunidade": return "/comunidade";
       case "admin": return "/admin";
+      case "privacidade": return "/privacidade";
+      case "termos": return "/termos";
       default: return "/";
     }
   }, []);
@@ -1370,7 +1375,24 @@ export default function DeckBuilder() {
         {tab === "admin" && user?.role === "admin" && (
           <AdminPanel embedded />
         )}
+
+        {tab === "privacidade" && (
+          <LegalPage variant="privacy" onBack={() => setTab("inicio")} />
+        )}
+
+        {tab === "termos" && (
+          <LegalPage variant="terms" onBack={() => setTab("inicio")} />
+        )}
       </main>
+
+      <footer className="ab-footer">
+        <span className="ab-footer-brand">Forja de Alter Egos</span>
+        <nav className="ab-footer-links">
+          <button className="ab-link-btn" onClick={() => setTab("privacidade")}>Política de Privacidade</button>
+          <span aria-hidden="true">·</span>
+          <button className="ab-link-btn" onClick={() => setTab("termos")}>Termos de Uso</button>
+        </nav>
+      </footer>
     </div>
   );
 }

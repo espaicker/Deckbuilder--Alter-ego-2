@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../lib/api.js";
+import { AccountDataSettings } from "./LegalPage.jsx";
 
 const STYLE_CLASS = {
   "Agressivo": "is-agressivo",
@@ -235,6 +236,22 @@ export default function ProfilePage({ username, user, flashToast, onBack }) {
               Cancelar
             </button>
           </div>
+        </div>
+      )}
+
+      {/* LGPD: exportar / apagar dados (so no proprio perfil) */}
+      {isOwnProfile && (
+        <div className="ab-sidebar-group" style={{ marginTop: 20 }}>
+          <AccountDataSettings
+            user={user}
+            flashToast={flashToast}
+            onDeleted={() => {
+              localStorage.removeItem("deckbuilder:auth_token");
+              localStorage.removeItem("deckbuilder:auth_user");
+              localStorage.removeItem("deckbuilder:admin_token");
+              window.location.href = "/";
+            }}
+          />
         </div>
       )}
 

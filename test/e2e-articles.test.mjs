@@ -44,7 +44,7 @@ async function req(method, path, body, token) {
   return { status: res.status, data };
 }
 async function registerAndLogin(username) {
-  await req("POST", "/api/auth/register", { username, password: "senha123456", email: `${username}@teste.com` });
+  await req("POST", "/api/auth/register", { username, password: "senha123456", email: `${username}@teste.com`, accepted_terms: true }); // patched
   const { data } = await req("POST", "/api/auth/login", { username, password: "senha123456" });
   return data;
 }

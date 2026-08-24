@@ -62,11 +62,15 @@ async function adminArticleReq(method, path, body = null) {
 
 // Auth
 export const api = {
-  register: (username, password) =>
-    request("POST", "/auth/register", { username, password }),
+  register: (username, password, email, acceptedTerms) =>
+    request("POST", "/auth/register", { username, password, email, accepted_terms: acceptedTerms }),
 
   login: (username, password) =>
     request("POST", "/auth/login", { username, password }),
+
+  // LGPD (Fase 9): direito de acesso e ao esquecimento
+  exportMyData: () => request("GET", "/auth/me/export"),
+  deleteMyAccount: (password) => request("DELETE", "/auth/me", { password }),
 
   // Decks
   getCommunityDecks: () => request("GET", "/decks/community"),

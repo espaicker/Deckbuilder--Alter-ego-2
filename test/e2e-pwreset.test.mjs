@@ -68,13 +68,13 @@ test("E2E Recuperacao de senha + email", async (t) => {
   });
 
   await t.test("Registro valido com email funciona", async () => {
-    const { status, data } = await req("POST", "/api/auth/register", { username: "user1", password: "senha123456", email: "user1@teste.com" });
+    const { status, data } = await req("POST", "/api/auth/register", { username: "user1", password: "senha123456", email: "user1@teste.com", accepted_terms: true });
     assert.equal(status, 201, JSON.stringify(data));
     assert.ok(data.token);
   });
 
   await t.test("Email duplicado (case-insensitive) e rejeitado", async () => {
-    const { status } = await req("POST", "/api/auth/register", { username: "user2", password: "senha123456", email: "USER1@TESTE.COM" });
+    const { status } = await req("POST", "/api/auth/register", { username: "user2", password: "senha123456", email: "USER1@TESTE.COM", accepted_terms: true });
     assert.equal(status, 409);
   });
 

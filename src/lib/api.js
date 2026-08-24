@@ -49,6 +49,17 @@ async function request(method, path, body = null) {
   return data;
 }
 
+async function adminArticleReq(method, path, body = null) {
+  const token = localStorage.getItem("deckbuilder:admin_token") || localStorage.getItem("deckbuilder:auth_token");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
+  return data;
+}
+
 // Auth
 export const api = {
   register: (username, password) =>
@@ -136,6 +147,17 @@ export const api = {
       return d;
     });
   },
+
+  // Artigos / noticias (Fase 8)
+  getArticles: () => request("GET", "/articles"),
+  getArticle: (slug) => request("GET", `/articles/${encodeURIComponent(slug)}`),
+  adminListArticles: () => adminArticleReq("GET", "/api/admin/articles"),
+  adminGetArticle: (id) => adminArticleReq("GET", `/api/admin/articles/${id}`),
+  createArticle: (data) => adminArticleReq("POST", "/api/admin/articles", data),
+  updateArticle: (id, data) => adminArticleReq("PATCH", `/api/admin/articles/${id}`, data),
+  publishArticle: (id) => adminArticleReq("POST", `/api/admin/articles/${id}/publish`),
+  unpublishArticle: (id) => adminArticleReq("POST", `/api/admin/articles/${id}/unpublish`),
+  deleteArticle: (id) => adminArticleReq("DELETE", `/api/admin/articles/${id}`),
 
   // Ranking
   getRanking: (page = 1, limit = 50, search = "") => {

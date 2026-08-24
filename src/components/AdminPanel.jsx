@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { COLOR_HEX } from "../lib/constants.js";
 import AnalyticsPanel from "./AnalyticsPanel.jsx";
 import { countEntries } from "../lib/deckRules.js";
+import { api } from "../lib/api.js";
 
 const ADMIN_API = "/api/admin";
 
@@ -558,6 +559,162 @@ function StoresManager({ stores, onApprove, onReject, loading }) {
   );
 }
 
+function ArticleEditor({ article, onClose, onSaved, flash }) {
+  const isEditing = !!article;
+  const [title, setTitle] = useState(article?.title || "");
+  const [body, setBody] = useState(article?.body || "");
+  const [showPreview, setShowPreview] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      if (isEditing) {
+        await api.updateArticle(article.id, { title: title.trim(), body });
+        flash("Artigo atualizado.");
+      } else {
+        await api.createArticle({ title: title.trim(), body });
+        flash("Rascunho criado.");
+      }
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="ab-card-form">
+      <button className="ab-btn ab-btn-ghost" onClick={onClose}>← Voltar para lista</button>
+      <h3 className="ab-section-title">{isEditing ? `Editar: ${article.title}` : "Novo artigo"}</h3>
+      <form className="ab-card-form-grid" onSubmit={handleSubmit}>
+        <label className="ab-auth-label">
+          Titulo
+          <input className="ab-input" value={title} maxLength={160} required
+            onChange={(e) => setTitle(e.target.value.slice(0, 160))}
+            placeholder="Ex: Balanceamento de marco 2026" />
+        </label>
+        <label className="ab-auth-label">
+          Corpo do artigo
+          <textarea className="ab-input ab-card-form-effect" value={body} rows={12} required
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Escreva o conteudo aqui. HTML sera exibido como texto (sanitizado)." />
+        </label>
+        <div className="ab-chip-row">
+          <button type="button" className={`ab-chip ${showPreview ? "is-active" : ""}`} onClick={() => setShowPreview((v) => !v)}>
+            {showPreview ? "Ocultar preview" : "Mostrar preview"}
+          </button>
+        </div>
+        {showPreview && (
+          <div className="ab-article-body" style={{ whiteSpace: "pre-wrap", border: "1px solid #333", padding: "12px", borderRadius: "6px" }}>
+            {body || "(vazio)"}
+          </div>
+        )}
+        {error && <div className="ab-auth-error">{error}</div>}
+        <div className="ab-publish-actions">
+          <button className="ab-btn ab-btn-primary" type="submit" disabled={submitting}>
+            {submitting ? "Salvando…" : isEditing ? "Salvar alteracoes" : "Criar rascunho"}
+          </button>
+          <button className="ab-btn ab-btn-ghost" type="button" onClick={onClose}>Cancelar</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ArticlesManager({ flash }) {
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState(null); // article object or "new"
+
+  async function load() {
+    setLoading(true);
+    try {
+      const data = await api.adminListArticles();
+      setArticles(data);
+    } catch (err) { flash(err.message); }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handlePublishToggle(a) {
+    try {
+      if (a.published) {
+        await api.unpublishArticle(a.id);
+        flash("Artigo despublicado.");
+      } else {
+        await api.publishArticle(a.id);
+        flash("Artigo publicado.");
+      }
+      load();
+    } catch (err) { flash(err.message); }
+  }
+
+  async function handleDelete(a) {
+    if (!confirm(`Apagar o artigo "${a.title}"?`)) return;
+    try {
+      await api.deleteArticle(a.id);
+      flash("Artigo removido.");
+      load();
+    } catch (err) { flash(err.message); }
+  }
+
+  async function handleEdit(a) {
+    try {
+      const full = await api.adminGetArticle(a.id);
+      setEditing(full);
+    } catch (err) { flash(err.message); }
+  }
+
+  if (editing) {
+    return (
+      <ArticleEditor
+        article={editing === "new" ? null : editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => { setEditing(null); load(); }}
+        flash={flash}
+      />
+    );
+  }
+
+  return (
+    <div className="ab-admin-table-wrap">
+      <div className="ab-admin-cards-header">
+        <h3 className="ab-sidebar-group-title">Artigos / Noticias ({articles.length})</h3>
+        <button className="ab-btn ab-btn-primary" onClick={() => setEditing("new")}>+ Novo artigo</button>
+      </div>
+      <table className="ab-admin-table">
+        <thead>
+          <tr><th>ID</th><th>Titulo</th><th>Slug</th><th>Status</th><th>Acoes</th></tr>
+        </thead>
+        <tbody>
+          {articles.map((a) => (
+            <tr key={a.id}>
+              <td>{a.id}</td>
+              <td>{a.title}</td>
+              <td><code>{a.slug}</code></td>
+              <td>{a.published ? "Publicado" : "Rascunho"}</td>
+              <td>
+                <button className="ab-btn ab-btn-ghost ab-btn-sm" onClick={() => handleEdit(a)} disabled={loading}>Editar</button>
+                <button className="ab-btn ab-btn-ghost ab-btn-sm" onClick={() => handlePublishToggle(a)} disabled={loading}>
+                  {a.published ? "Despublicar" : "Publicar"}
+                </button>
+                <button className="ab-btn ab-btn-ghost ab-btn-sm ab-btn-danger" onClick={() => handleDelete(a)} disabled={loading}>Apagar</button>
+              </td>
+            </tr>
+          ))}
+          {articles.length === 0 && <tr><td colSpan={5}>Nenhum artigo ainda.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function AdminPanel({ embedded = false }) {
   const [admin, setAdmin] = useState(embedded ? { username: "admin" } : null);
   const [tab, setTab] = useState("stats");
@@ -737,6 +894,7 @@ export default function AdminPanel({ embedded = false }) {
         <button className={`ab-tab ${tab === "decks" ? "is-active" : ""}`} onClick={() => switchTab("decks")}>Decks</button>
         <button className={`ab-tab ${tab === "cards" ? "is-active" : ""}`} onClick={() => switchTab("cards")}>Cartas</button>
         <button className={`ab-tab ${tab === "lojas" ? "is-active" : ""}`} onClick={() => switchTab("lojas")}>Lojas</button>
+        <button className={`ab-tab ${tab === "noticias" ? "is-active" : ""}`} onClick={() => switchTab("noticias")}>Notícias</button>
         <button className={`ab-tab ${tab === "analytics" ? "is-active" : ""}`} onClick={() => switchTab("analytics")}>Analytics</button>
       </nav>
 
@@ -746,6 +904,7 @@ export default function AdminPanel({ embedded = false }) {
         {tab === "decks" && <DecksTable decks={decks} onDelete={deleteDeck} loading={loading} />}
         {tab === "cards" && <CardManager cards={cards} meta={cardMeta} onReload={loadCards} flash={flash} />}
         {tab === "lojas" && <StoresManager stores={pendingStores} onApprove={approveStore} onReject={rejectStore} loading={loading} />}
+        {tab === "noticias" && <ArticlesManager flash={flash} />}
         {tab === "analytics" && <AnalyticsPanel />}
       </main>
     </div>

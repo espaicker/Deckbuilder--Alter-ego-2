@@ -337,6 +337,23 @@ export async function initDb() {
     }
   } catch (e) { /* ignore */ }
 
+  // Artigos / noticias (Fase 8) — conteudo publicado so por admin
+  wrapper.exec(`
+    CREATE TABLE IF NOT EXISTS articles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      body TEXT NOT NULL,
+      published INTEGER NOT NULL DEFAULT 0,
+      author_user_id INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      published_at INTEGER,
+      FOREIGN KEY (author_user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published, published_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug);
+  `);
+
   // Password reset tokens (armazena apenas o HASH do token, nunca o token puro)
   wrapper.exec(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (

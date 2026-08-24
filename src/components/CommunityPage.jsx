@@ -5,8 +5,10 @@ import ForumTab from "./ForumTab.jsx";
 import RankingTab from "./RankingTab.jsx";
 import ProfilePage from "./ProfilePage.jsx";
 import StoresTab from "./StoresTab.jsx";
+import NewsTab from "./NewsTab.jsx";
 
 const SUBTABS = [
+  ["noticias", "Notícias"],
   ["decklists", "Decklists"],
   ["torneios", "Torneios"],
   ["ranking", "Ranking"],
@@ -46,6 +48,10 @@ export default function CommunityPage({ user, alterEgo, mainDeck, dropPile, flas
       </nav>
 
       <div className="ab-subtab-content">
+        {subtab === "noticias" && (
+          <NewsTab flashToast={flashToast} />
+        )}
+
         {subtab === "decklists" && (
           <DecklistsTab
             user={user}

@@ -13,6 +13,7 @@ import rankingRoutes from "./routes/ranking.js";
 import profileRoutes from "./routes/profile.js";
 import forumRoutes from "./routes/forum.js";
 import storesRoutes from "./routes/stores.js";
+import articlesRoutes, { adminRouter as articlesAdminRoutes } from "./routes/articles.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -49,6 +50,8 @@ app.use("/api/ranking", rankingRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/forum", forumRoutes);
 app.use("/api/stores", storesRoutes);
+app.use("/api/articles", articlesRoutes);
+app.use("/api/admin/articles", articlesAdminRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

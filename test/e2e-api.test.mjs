@@ -147,6 +147,7 @@ test("E2E API - Full integration test", async (t) => {
     const { status, data } = await req("POST", "/api/auth/register", {
       username: "JogadorA",
       password: "senha123",
+      email: "jogadora@teste.com",
     });
     assert.equal(status, 201);
     assert.ok(data.token);
@@ -158,6 +159,7 @@ test("E2E API - Full integration test", async (t) => {
     const { status, data } = await req("POST", "/api/auth/register", {
       username: "JogadorB",
       password: "senha456",
+      email: "jogadorb@teste.com",
     });
     assert.equal(status, 201);
     assert.ok(data.token);
@@ -168,6 +170,7 @@ test("E2E API - Full integration test", async (t) => {
     const { status, data } = await req("POST", "/api/auth/register", {
       username: "ProPlayer",
       password: "rankedmaster",
+      email: "proplayer@teste.com",
     });
     assert.equal(status, 201);
     tokenC = data.token;
@@ -177,6 +180,7 @@ test("E2E API - Full integration test", async (t) => {
     const { status, data } = await req("POST", "/api/auth/register", {
       username: "JogadorA",
       password: "outrasenha",
+      email: "outro@teste.com",
     });
     assert.equal(status, 409);
     assert.match(data.error, /já está em uso/);
@@ -194,6 +198,7 @@ test("E2E API - Full integration test", async (t) => {
     const { status } = await req("POST", "/api/auth/register", {
       username: "ValidUser",
       password: "12345",
+      email: "validuser@teste.com",
     });
     assert.equal(status, 400);
   });

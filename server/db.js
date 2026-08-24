@@ -283,6 +283,30 @@ export async function initDb() {
     wrapper.exec("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL");
   } catch (e) { /* already exists */ }
 
+  // Migration: add email column if missing (safe for existing DBs)
+  try {
+    const cols = wrapper.prepare("PRAGMA table_info(users)").all();
+    const hasEmail = cols.some((col) => col.name === "email");
+    if (!hasEmail) {
+      wrapper.exec("ALTER TABLE users ADD COLUMN email TEXT");
+    }
+  } catch (e) { /* ignore */ }
+
+  // Password reset tokens (armazena apenas o HASH do token, nunca o token puro)
+  wrapper.exec(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_prt_token_hash ON password_reset_tokens(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_prt_user ON password_reset_tokens(user_id);
+  `);
+
   // Migration: add is_official column if missing
   try {
     wrapper.exec("ALTER TABLE tournaments ADD COLUMN is_official INTEGER NOT NULL DEFAULT 0");

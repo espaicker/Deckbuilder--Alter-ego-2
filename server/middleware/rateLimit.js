@@ -45,3 +45,10 @@ export const forumPostLimiter = makeLimiter({
   max: 5,
   message: "Muitas postagens em pouco tempo. Aguarde um momento antes de postar novamente.",
 });
+
+// Recuperacao de senha: 5 tentativas a cada 15 minutos por IP (alvo de abuso).
+export const passwordResetLimiter = makeLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Muitas tentativas. Tente novamente em alguns minutos.",
+});

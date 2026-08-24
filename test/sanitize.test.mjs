@@ -49,7 +49,7 @@ test("isSafeCardId rejeita tipos não-string", () => {
 });
 
 test("safeCardImagePath retorna caminho correto", () => {
-  assert.equal(safeCardImagePath("AE-0001"), "./assets/cards/AE-0001.jpg");
+  assert.equal(safeCardImagePath("AE-0001"), "/assets/cards/AE-0001.jpg");
 });
 
 test("safeCardImagePath retorna null para IDs inseguros", () => {

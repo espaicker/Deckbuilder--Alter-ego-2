@@ -50,7 +50,7 @@ async function req(method, path, body, token) {
 }
 
 async function registerAndLogin(username) {
-  await req("POST", "/api/auth/register", { username, password: "senha123456" });
+  await req("POST", "/api/auth/register", { username, password: "senha123456", email: `${username}@teste.com` });
   const { data } = await req("POST", "/api/auth/login", { username, password: "senha123456" });
   return data.token;
 }
@@ -92,17 +92,13 @@ test("E2E Fórum — XSS, Flood, Moderação", async (t) => {
     assert.equal(status, 201, JSON.stringify(data));
     topicId = data.id;
 
-    // Fetch topic and verify sanitized
+    // Contrato: o servidor guarda o texto EXATAMENTE como enviado.
+    // A seguranca XSS e responsabilidade do React (escapa ao renderizar com {}),
+    // nunca via dangerouslySetInnerHTML. Ver Fase 3.
     const { data: topicData } = await req("GET", `/api/forum/topics/${topicId}`);
     const topic = topicData.topic;
-
-    // Must NOT contain raw script tags
-    assert.ok(!topic.title.includes("<script>"), `Title still has <script>: ${topic.title}`);
-    assert.ok(!topic.body.includes("<img"), `Body still has <img>: ${topic.body}`);
-
-    // Must contain escaped versions
-    assert.ok(topic.title.includes("&lt;script&gt;"), `Title should have escaped version`);
-    assert.ok(topic.body.includes("&lt;img"), `Body should have escaped img`);
+    assert.equal(topic.title, xssTitle, "Title deve vir exatamente como enviado");
+    assert.equal(topic.body, xssBody, "Body deve vir exatamente como enviado");
   });
 
   await t.test("XSS em resposta: scripts escapados", async () => {
@@ -116,8 +112,7 @@ test("E2E Fórum — XSS, Flood, Moderação", async (t) => {
 
     const { data: topicData } = await req("GET", `/api/forum/topics/${topicId}`);
     const reply = topicData.replies.find(r => r.id === replyId);
-    assert.ok(!reply.body.includes("<script>"), "Reply body must not have raw <script>");
-    assert.ok(reply.body.includes("&lt;script&gt;"), "Reply body should have escaped <script>");
+    assert.equal(reply.body, xssReply, "Reply body deve vir exatamente como enviado");
   });
 
   // === TESTE FLOOD: 10 requests em 2 segundos deve gerar 429 ===

@@ -49,7 +49,7 @@ async function req(method, path, body, token) {
 }
 
 async function registerAndLogin(username) {
-  await req("POST", "/api/auth/register", { username, password: "senha123456" });
+  await req("POST", "/api/auth/register", { username, password: "senha123456", email: `${username}@teste.com` });
   const { data } = await req("POST", "/api/auth/login", { username, password: "senha123456" });
   return data.token;
 }

@@ -93,7 +93,12 @@ export const api = {
   reportMatchResult: (tournamentId, matchId, result) =>
     request("POST", `/tournaments/${tournamentId}/matches/${matchId}/report`, { result }),
 
+  overrideMatchResult: (tournamentId, matchId, result, reason) =>
+    request("PATCH", `/tournaments/${tournamentId}/matches/${matchId}/override`, { result, reason }),
+
   cancelTournament: (id) => request("POST", `/tournaments/${id}/cancel`),
+
+  toggleJudge: (userId) => request("POST", `/admin/users/${userId}/toggle-judge`),
 
   setTournamentRanked: (id, isRanked) => request("PATCH", `/tournaments/${id}/ranked`, { is_ranked: isRanked }),
 

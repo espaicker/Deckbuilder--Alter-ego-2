@@ -77,7 +77,7 @@ function requireAdmin(req, res, next) {
 router.get("/users", requireAdmin, (req, res) => {
   try {
     const users = req.db.prepare(`
-      SELECT id, username, created_at FROM users ORDER BY id DESC
+      SELECT id, username, created_at, is_judge FROM users ORDER BY id DESC
     `).all();
     res.json(users);
   } catch (err) {
@@ -339,4 +339,27 @@ router.get("/analytics/meta", requireAdmin, async (req, res) => {
     res.status(500).json({ error: "Erro ao calcular meta analytics." });
   }
 });
+
+/**
+ * POST /api/admin/users/:id/toggle-judge — admin concede/remove papel de juiz.
+ * Nao existe autopromocao: so admin faz isso.
+ */
+router.post("/users/:id/toggle-judge", requireAdmin, (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(userId)) return res.status(400).json({ error: "ID invalido." });
+    const user = req.db.prepare("SELECT id, username, is_judge FROM users WHERE id = ?").get(userId);
+    if (!user) return res.status(404).json({ error: "Usuario nao encontrado." });
+    const newValue = user.is_judge ? 0 : 1;
+    req.db.prepare("UPDATE users SET is_judge = ? WHERE id = ?").run(newValue, userId);
+    res.json({
+      message: newValue ? `"${user.username}" agora e juiz.` : `"${user.username}" nao e mais juiz.`,
+      is_judge: !!newValue,
+    });
+  } catch (err) {
+    console.error("[admin] toggle-judge error:", err);
+    res.status(500).json({ error: "Erro ao alterar papel de juiz." });
+  }
+});
+
 export default router;

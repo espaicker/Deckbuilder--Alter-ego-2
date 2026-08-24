@@ -292,6 +292,25 @@ export async function initDb() {
     }
   } catch (e) { /* ignore */ }
 
+  // Migration: add is_judge column if missing
+  try {
+    const cols = wrapper.prepare("PRAGMA table_info(users)").all();
+    if (!cols.some((col) => col.name === "is_judge")) {
+      wrapper.exec("ALTER TABLE users ADD COLUMN is_judge INTEGER NOT NULL DEFAULT 0");
+    }
+  } catch (e) { /* ignore */ }
+
+  // Migration: add override tracking columns to tournament_matches
+  try {
+    const cols = wrapper.prepare("PRAGMA table_info(tournament_matches)").all();
+    if (!cols.some((col) => col.name === "overridden_by_user_id")) {
+      wrapper.exec("ALTER TABLE tournament_matches ADD COLUMN overridden_by_user_id INTEGER");
+    }
+    if (!cols.some((col) => col.name === "override_reason")) {
+      wrapper.exec("ALTER TABLE tournament_matches ADD COLUMN override_reason TEXT");
+    }
+  } catch (e) { /* ignore */ }
+
   // Password reset tokens (armazena apenas o HASH do token, nunca o token puro)
   wrapper.exec(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (

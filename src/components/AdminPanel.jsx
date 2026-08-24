@@ -130,13 +130,13 @@ function StatsPanel({ stats }) {
   );
 }
 
-function UsersTable({ users, onDelete, loading }) {
+function UsersTable({ users, onDelete, onToggleJudge, loading }) {
   return (
     <div className="ab-admin-table-wrap">
       <h3 className="ab-sidebar-group-title">Usuários ({users.length})</h3>
       <table className="ab-admin-table">
         <thead>
-          <tr><th>ID</th><th>Username</th><th>Criado em</th><th>Ações</th></tr>
+          <tr><th>ID</th><th>Username</th><th>Criado em</th><th>Juiz</th><th>Ações</th></tr>
         </thead>
         <tbody>
           {users.map((u) => (
@@ -144,7 +144,15 @@ function UsersTable({ users, onDelete, loading }) {
               <td>{u.id}</td>
               <td>{u.username}</td>
               <td>{u.created_at}</td>
+              <td>{u.is_judge ? "Sim" : "—"}</td>
               <td>
+                <button
+                  className="ab-btn ab-btn-ghost ab-btn-sm"
+                  onClick={() => onToggleJudge(u.id, u.username)}
+                  disabled={loading}
+                >
+                  {u.is_judge ? "Remover juiz" : "Tornar juiz"}
+                </button>
                 <button
                   className="ab-btn ab-btn-ghost ab-btn-sm ab-btn-danger"
                   onClick={() => onDelete(u.id, u.username)}
@@ -155,7 +163,7 @@ function UsersTable({ users, onDelete, loading }) {
               </td>
             </tr>
           ))}
-          {users.length === 0 && <tr><td colSpan={4}>Nenhum usuário.</td></tr>}
+          {users.length === 0 && <tr><td colSpan={5}>Nenhum usuário.</td></tr>}
         </tbody>
       </table>
     </div>
@@ -602,6 +610,16 @@ export default function AdminPanel({ embedded = false }) {
     setLoading(false);
   }
 
+  async function toggleJudge(id, name) {
+    setLoading(true);
+    try {
+      const res = await adminReq("POST", `/users/${id}/toggle-judge`);
+      flash(res.message);
+      loadUsers();
+    } catch (err) { flash(err.message); }
+    setLoading(false);
+  }
+
   async function deleteDeck(id, name) {
     if (!confirm(`Remover deck "${name}"?`)) return;
     setLoading(true);
@@ -664,7 +682,7 @@ export default function AdminPanel({ embedded = false }) {
 
       <main className="ab-main ab-admin-main">
         {tab === "stats" && <StatsPanel stats={stats} />}
-        {tab === "users" && <UsersTable users={users} onDelete={deleteUser} loading={loading} />}
+        {tab === "users" && <UsersTable users={users} onDelete={deleteUser} onToggleJudge={toggleJudge} loading={loading} />}
         {tab === "decks" && <DecksTable decks={decks} onDelete={deleteDeck} loading={loading} />}
         {tab === "cards" && <CardManager cards={cards} meta={cardMeta} onReload={loadCards} flash={flash} />}
         {tab === "analytics" && <AnalyticsPanel />}

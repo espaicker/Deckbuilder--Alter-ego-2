@@ -267,6 +267,22 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
     }
   }
 
+  async function handleOverrideResult(matchId) {
+    const result = window.prompt("Novo resultado? Digite: player1, player2 ou draw");
+    if (!result || !["player1", "player2", "draw"].includes(result)) {
+      if (result !== null) flashToast("Resultado invalido. Use player1, player2 ou draw.");
+      return;
+    }
+    const reason = window.prompt("Motivo da correcao (opcional):") || "";
+    try {
+      await api.overrideMatchResult(tournamentId, matchId, result, reason);
+      flashToast("Resultado corrigido pelo juiz.");
+      loadTournament();
+    } catch (err) {
+      flashToast(err.message);
+    }
+  }
+
   async function handleReportResult(matchId, result) {
     setReportingMatchId(matchId);
     try {
@@ -531,6 +547,18 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
                       {m.result === "player2" && <span className="ab-tournament-match-done">{m.player2Name} venceu</span>}
                       {m.result === "draw" && <span className="ab-tournament-match-done">Empate</span>}
                       {m.result === "bye" && <span className="ab-tournament-match-done">BYE</span>}
+                      {t.isJudge && !isOrganizer && !isPlayerInMatch(m, t.myRegistration) && m.result !== "pending" && m.result !== "bye" && (
+                        <button
+                          className="ab-btn ab-btn-ghost ab-btn-sm ab-tournament-judge-btn"
+                          onClick={() => handleOverrideResult(m.id)}
+                          title="Corrigir resultado (juiz)"
+                        >
+                          Corrigir resultado
+                        </button>
+                      )}
+                      {m.override_reason && (
+                        <span className="ab-tournament-override-note">Corrigido: {m.override_reason}</span>
+                      )}
                     </div>
                   </div>
                 ))}

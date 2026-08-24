@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, optionalAuth } from "../middleware/auth.js";
+import { requireAuth, optionalAuth, requireJudgeOrAdmin } from "../middleware/auth.js";
 import {
   computeStandings,
   generateSwissPairings,
@@ -270,6 +270,8 @@ router.get("/:id", optionalAuth, (req, res) => {
     player2Name: m.player2_id ? usernameByPlayerId.get(m.player2_id) : null,
     result: m.result,
     reportedBy: m.reported_by,
+    overriddenBy: m.overridden_by_user_id || null,
+    override_reason: m.override_reason || null,
   }));
 
   const { players: enginePlayers, matches: engineMatches } = loadEngineData(req.db, tournament.id);
@@ -282,6 +284,7 @@ router.get("/:id", optionalAuth, (req, res) => {
     ...tournament,
     isOrganizer: !!(req.user && req.user.id === tournament.organizer_id),
     isAdmin: !!(req.user && req.user.role === "admin"),
+    isJudge: !!(req.user && (req.user.role === "admin" || (req.db.prepare("SELECT is_judge FROM users WHERE id = ?").get(req.user.id) || {}).is_judge)),
     myRegistration: req.user ? players.find((p) => p.user_id === req.user.id) || null : null,
     players,
     rounds,
@@ -620,6 +623,41 @@ router.patch("/:id/ranked", requireAuth, (req, res) => {
   const value = is_ranked ? 1 : 0;
   req.db.prepare("UPDATE tournaments SET is_official = ? WHERE id = ?").run(value, tournament.id);
   res.json({ message: value ? "Torneio marcado como oficial." : "Torneio desmarcado como oficial.", is_ranked: !!value });
+});
+
+
+/* ============================================================
+   CORRECAO DE RESULTADO POR JUIZ (qualquer torneio)
+   ============================================================ */
+
+// PATCH /:id/matches/:matchId/override — juiz ou admin sobrescreve resultado
+// em QUALQUER torneio. Fica registrado quem corrigiu e por que.
+router.patch("/:id/matches/:matchId/override", requireAuth, requireJudgeOrAdmin, (req, res) => {
+  const tournament = req.db.prepare("SELECT * FROM tournaments WHERE id = ?").get(req.params.id);
+  if (!tournament) return res.status(404).json({ error: "Torneio nao encontrado." });
+
+  const match = req.db
+    .prepare("SELECT * FROM tournament_matches WHERE id = ? AND tournament_id = ?")
+    .get(req.params.matchId, tournament.id);
+  if (!match) return res.status(404).json({ error: "Confronto nao encontrado." });
+  if (match.result === "bye") {
+    return res.status(400).json({ error: "Confronto de bye nao pode ser corrigido." });
+  }
+
+  const { result, reason } = req.body || {};
+  if (!["player1", "player2", "draw"].includes(result)) {
+    return res.status(400).json({ error: "Resultado invalido." });
+  }
+
+  const safeReason = typeof reason === "string" ? reason.trim().slice(0, 300) : null;
+
+  req.db
+    .prepare(
+      "UPDATE tournament_matches SET result = ?, reported_by = ?, overridden_by_user_id = ?, override_reason = ? WHERE id = ?"
+    )
+    .run(result, req.user.id, req.user.id, safeReason, match.id);
+
+  res.json({ message: "Resultado corrigido pelo juiz.", result, override_reason: safeReason });
 });
 
 export default router;

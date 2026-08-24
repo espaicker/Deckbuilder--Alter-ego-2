@@ -6,3 +6,6 @@ server/deckbuilder.db
 server/.jwt-secret
 server/.admin-credentials.json
 .env
+
+server/.test-data-*/
+

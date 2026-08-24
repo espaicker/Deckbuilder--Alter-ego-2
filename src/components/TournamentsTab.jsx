@@ -30,8 +30,16 @@ function CreateTournamentForm({ onCreated, onCancel }) {
   const [format, setFormat] = useState("swiss");
   const [topCutSize, setTopCutSize] = useState(8);
   const [maxPlayers, setMaxPlayers] = useState("");
+  const [storeId, setStoreId] = useState("");
+  const [myStores, setMyStores] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.getMyStores()
+      .then((rows) => setMyStores((rows || []).filter((s) => s.approved)))
+      .catch(() => setMyStores([]));
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -44,6 +52,7 @@ function CreateTournamentForm({ onCreated, onCancel }) {
         format,
         top_cut_size: format === "swiss_topcut" ? topCutSize : undefined,
         max_players: maxPlayers ? parseInt(maxPlayers, 10) : undefined,
+        store_id: storeId ? parseInt(storeId, 10) : undefined,
       };
       await api.createTournament(data);
       onCreated();
@@ -123,6 +132,22 @@ function CreateTournamentForm({ onCreated, onCancel }) {
           placeholder="Sem limite"
         />
       </label>
+
+      {myStores.length > 0 && (
+        <label className="ab-field">
+          <span className="ab-field-label">Vincular a uma loja parceira (opcional)</span>
+          <select
+            className="ab-input ab-select"
+            value={storeId}
+            onChange={(e) => setStoreId(e.target.value)}
+          >
+            <option value="">— Nenhuma loja —</option>
+            {myStores.map((s) => (
+              <option key={s.id} value={s.id}>{s.name} ({s.city}/{s.state})</option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {error && <div className="ab-auth-error">{error}</div>}
 
@@ -343,6 +368,7 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
       <div className="ab-tournament-meta">
         <span>Organizador: <strong>{t.organizer_username}</strong></span>
         <span>Formato: <strong>{FORMAT_LABELS[t.format]}</strong></span>
+        {t.store_name && <span>Loja: <strong>{t.store_name}</strong> ({t.store_city}/{t.store_state})</span>}
         {t.max_players && <span>Máx. jogadores: <strong>{t.max_players}</strong></span>}
         <span>Inscritos: <strong>{t.players?.length || 0}</strong></span>
         {t.round_count && <span>Rodadas: <strong>{t.current_round || 0}/{t.round_count}</strong></span>}

@@ -12,6 +12,7 @@ import tournamentRoutes from "./routes/tournaments.js";
 import rankingRoutes from "./routes/ranking.js";
 import profileRoutes from "./routes/profile.js";
 import forumRoutes from "./routes/forum.js";
+import storesRoutes from "./routes/stores.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -47,6 +48,7 @@ app.use("/api/tournaments", tournamentRoutes);
 app.use("/api/ranking", rankingRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/forum", forumRoutes);
+app.use("/api/stores", storesRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

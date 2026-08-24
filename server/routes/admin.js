@@ -362,4 +362,60 @@ router.post("/users/:id/toggle-judge", requireAdmin, (req, res) => {
   }
 });
 
+
+/**
+ * GET /api/admin/stores/pending — lojas aguardando aprovacao (Fase 7).
+ */
+router.get("/stores/pending", requireAdmin, (req, res) => {
+  try {
+    const rows = req.db
+      .prepare(
+        `SELECT s.id, s.name, s.city, s.state, s.address, s.contact_info,
+                s.owner_user_id, s.created_at, u.username AS owner_username
+         FROM stores s JOIN users u ON u.id = s.owner_user_id
+         WHERE s.approved = 0
+         ORDER BY s.created_at ASC`
+      )
+      .all();
+    res.json(rows);
+  } catch (err) {
+    console.error("[admin] stores/pending error:", err);
+    res.status(500).json({ error: "Erro ao listar lojas pendentes." });
+  }
+});
+
+/**
+ * POST /api/admin/stores/:id/approve — aprova uma loja pendente.
+ */
+router.post("/stores/:id/approve", requireAdmin, (req, res) => {
+  try {
+    const storeId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(storeId)) return res.status(400).json({ error: "ID invalido." });
+    const store = req.db.prepare("SELECT id, name FROM stores WHERE id = ?").get(storeId);
+    if (!store) return res.status(404).json({ error: "Loja nao encontrada." });
+    req.db.prepare("UPDATE stores SET approved = 1 WHERE id = ?").run(storeId);
+    res.json({ message: `Loja "${store.name}" aprovada.`, approved: true });
+  } catch (err) {
+    console.error("[admin] stores/approve error:", err);
+    res.status(500).json({ error: "Erro ao aprovar loja." });
+  }
+});
+
+/**
+ * POST /api/admin/stores/:id/reject — rejeita (apaga) uma loja pendente.
+ */
+router.post("/stores/:id/reject", requireAdmin, (req, res) => {
+  try {
+    const storeId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(storeId)) return res.status(400).json({ error: "ID invalido." });
+    const store = req.db.prepare("SELECT id, name FROM stores WHERE id = ?").get(storeId);
+    if (!store) return res.status(404).json({ error: "Loja nao encontrada." });
+    req.db.prepare("DELETE FROM stores WHERE id = ?").run(storeId);
+    res.json({ message: `Solicitacao da loja "${store.name}" rejeitada.`, rejected: true });
+  } catch (err) {
+    console.error("[admin] stores/reject error:", err);
+    res.status(500).json({ error: "Erro ao rejeitar loja." });
+  }
+});
+
 export default router;

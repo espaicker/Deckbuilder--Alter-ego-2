@@ -529,6 +529,35 @@ function CardForm({ meta, card, onClose, onSaved, flash }) {
   );
 }
 
+function StoresManager({ stores, onApprove, onReject, loading }) {
+  return (
+    <div className="ab-admin-table-wrap">
+      <h3 className="ab-sidebar-group-title">Lojas pendentes de aprovacao ({stores.length})</h3>
+      <table className="ab-admin-table">
+        <thead>
+          <tr><th>ID</th><th>Nome</th><th>Cidade/UF</th><th>Dono</th><th>Contato</th><th>Acoes</th></tr>
+        </thead>
+        <tbody>
+          {stores.map((s) => (
+            <tr key={s.id}>
+              <td>{s.id}</td>
+              <td>{s.name}</td>
+              <td>{s.city}/{s.state}</td>
+              <td>{s.owner_username}</td>
+              <td>{s.contact_info || "—"}</td>
+              <td>
+                <button className="ab-btn ab-btn-ghost ab-btn-sm" onClick={() => onApprove(s.id, s.name)} disabled={loading}>Aprovar</button>
+                <button className="ab-btn ab-btn-ghost ab-btn-sm ab-btn-danger" onClick={() => onReject(s.id, s.name)} disabled={loading}>Rejeitar</button>
+              </td>
+            </tr>
+          ))}
+          {stores.length === 0 && <tr><td colSpan={6}>Nenhuma loja pendente.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function AdminPanel({ embedded = false }) {
   const [admin, setAdmin] = useState(embedded ? { username: "admin" } : null);
   const [tab, setTab] = useState("stats");
@@ -537,6 +566,7 @@ export default function AdminPanel({ embedded = false }) {
   const [decks, setDecks] = useState([]);
   const [cards, setCards] = useState([]);
   const [cardMeta, setCardMeta] = useState(null);
+  const [pendingStores, setPendingStores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -632,6 +662,34 @@ export default function AdminPanel({ embedded = false }) {
     setLoading(false);
   }
 
+  async function loadStores() {
+    try {
+      const data = await adminReq("GET", "/stores/pending");
+      setPendingStores(data);
+    } catch (err) { flash(err.message); }
+  }
+
+  async function approveStore(id, name) {
+    setLoading(true);
+    try {
+      const res = await adminReq("POST", `/stores/${id}/approve`);
+      flash(res.message || `Loja "${name}" aprovada.`);
+      loadStores();
+    } catch (err) { flash(err.message); }
+    setLoading(false);
+  }
+
+  async function rejectStore(id, name) {
+    if (!confirm(`Rejeitar (apagar) a solicitacao da loja "${name}"?`)) return;
+    setLoading(true);
+    try {
+      const res = await adminReq("POST", `/stores/${id}/reject`);
+      flash(res.message || `Loja "${name}" rejeitada.`);
+      loadStores();
+    } catch (err) { flash(err.message); }
+    setLoading(false);
+  }
+
   function handleLogin(user) {
     setAdmin(user);
     loadStats();
@@ -649,6 +707,7 @@ export default function AdminPanel({ embedded = false }) {
     if (t === "users") loadUsers();
     if (t === "decks") loadDecks();
     if (t === "cards") loadCards();
+    if (t === "lojas") loadStores();
   }
 
   if (!admin) {
@@ -677,6 +736,7 @@ export default function AdminPanel({ embedded = false }) {
         <button className={`ab-tab ${tab === "users" ? "is-active" : ""}`} onClick={() => switchTab("users")}>Usuários</button>
         <button className={`ab-tab ${tab === "decks" ? "is-active" : ""}`} onClick={() => switchTab("decks")}>Decks</button>
         <button className={`ab-tab ${tab === "cards" ? "is-active" : ""}`} onClick={() => switchTab("cards")}>Cartas</button>
+        <button className={`ab-tab ${tab === "lojas" ? "is-active" : ""}`} onClick={() => switchTab("lojas")}>Lojas</button>
         <button className={`ab-tab ${tab === "analytics" ? "is-active" : ""}`} onClick={() => switchTab("analytics")}>Analytics</button>
       </nav>
 
@@ -685,6 +745,7 @@ export default function AdminPanel({ embedded = false }) {
         {tab === "users" && <UsersTable users={users} onDelete={deleteUser} onToggleJudge={toggleJudge} loading={loading} />}
         {tab === "decks" && <DecksTable decks={decks} onDelete={deleteDeck} loading={loading} />}
         {tab === "cards" && <CardManager cards={cards} meta={cardMeta} onReload={loadCards} flash={flash} />}
+        {tab === "lojas" && <StoresManager stores={pendingStores} onApprove={approveStore} onReject={rejectStore} loading={loading} />}
         {tab === "analytics" && <AnalyticsPanel />}
       </main>
     </div>

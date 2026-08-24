@@ -311,6 +311,32 @@ export async function initDb() {
     }
   } catch (e) { /* ignore */ }
 
+  // Lojas parceiras (Fase 7)
+  wrapper.exec(`
+    CREATE TABLE IF NOT EXISTS stores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      city TEXT NOT NULL,
+      state TEXT NOT NULL,
+      address TEXT,
+      contact_info TEXT,
+      owner_user_id INTEGER NOT NULL,
+      approved INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_stores_approved ON stores(approved);
+    CREATE INDEX IF NOT EXISTS idx_stores_owner ON stores(owner_user_id);
+  `);
+
+  // Migration: add store_id to tournaments (nullable)
+  try {
+    const cols = wrapper.prepare("PRAGMA table_info(tournaments)").all();
+    if (!cols.some((col) => col.name === "store_id")) {
+      wrapper.exec("ALTER TABLE tournaments ADD COLUMN store_id INTEGER");
+    }
+  } catch (e) { /* ignore */ }
+
   // Password reset tokens (armazena apenas o HASH do token, nunca o token puro)
   wrapper.exec(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (

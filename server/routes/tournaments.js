@@ -176,7 +176,7 @@ router.get("/", optionalAuth, (req, res) => {
 });
 
 router.post("/", requireAuth, (req, res) => {
-  const { name, description, format, top_cut_size, max_players, is_official } = req.body || {};
+  const { name, description, format, top_cut_size, max_players, is_official, store_id } = req.body || {};
 
   if (!name || typeof name !== "string" || !name.trim() || name.length > MAX_NAME_LENGTH) {
     return res.status(400).json({ error: `Nome é obrigatório (máx. ${MAX_NAME_LENGTH} caracteres).` });
@@ -198,10 +198,32 @@ router.post("/", requireAuth, (req, res) => {
   // Only admins can create official tournaments
     const official = (is_official && req.user.role === "admin") ? 1 : 0;
 
+  // Vinculo com loja (Fase 7): so o dono da loja ou admin pode vincular.
+  let linkedStoreId = null;
+  if (store_id !== undefined && store_id !== null && store_id !== "") {
+    const sid = parseInt(store_id, 10);
+    if (!Number.isFinite(sid)) {
+      return res.status(400).json({ error: "store_id invalido." });
+    }
+    const store = req.db.prepare("SELECT id, owner_user_id, approved FROM stores WHERE id = ?").get(sid);
+    if (!store) {
+      return res.status(404).json({ error: "Loja nao encontrada." });
+    }
+    const isOwner = store.owner_user_id === req.user.id;
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "Voce so pode vincular torneios a uma loja que e sua." });
+    }
+    if (!store.approved && !isAdmin) {
+      return res.status(400).json({ error: "Esta loja ainda nao foi aprovada." });
+    }
+    linkedStoreId = sid;
+  }
+
     const result = req.db
     .prepare(
-      `INSERT INTO tournaments (name, description, format, top_cut_size, max_players, organizer_id, is_official)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO tournaments (name, description, format, top_cut_size, max_players, organizer_id, is_official, store_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       name.trim(),
@@ -210,7 +232,8 @@ router.post("/", requireAuth, (req, res) => {
       format === "swiss_topcut" ? top_cut_size : null,
       max_players ?? null,
       req.user.id,
-      official
+      official,
+      linkedStoreId
     );
 
   res.status(201).json({ id: result.lastInsertRowid, message: "Torneio criado!" });
@@ -223,8 +246,9 @@ router.post("/", requireAuth, (req, res) => {
 router.get("/:id", optionalAuth, (req, res) => {
   const tournament = req.db
     .prepare(
-      `SELECT t.*, u.username AS organizer_username
+      `SELECT t.*, u.username AS organizer_username, s.name AS store_name, s.city AS store_city, s.state AS store_state
        FROM tournaments t JOIN users u ON u.id = t.organizer_id
+       LEFT JOIN stores s ON s.id = t.store_id
        WHERE t.id = ?`
     )
     .get(req.params.id);

@@ -4,12 +4,14 @@ import TournamentsTab from "./TournamentsTab.jsx";
 import ForumTab from "./ForumTab.jsx";
 import RankingTab from "./RankingTab.jsx";
 import ProfilePage from "./ProfilePage.jsx";
+import StoresTab from "./StoresTab.jsx";
 
 const SUBTABS = [
   ["decklists", "Decklists"],
   ["torneios", "Torneios"],
   ["ranking", "Ranking"],
   ["forum", "Fórum"],
+  ["lojas", "Lojas"],
 ];
 
 export default function CommunityPage({ user, alterEgo, mainDeck, dropPile, flashToast, onRequestLogin }) {
@@ -69,6 +71,14 @@ export default function CommunityPage({ user, alterEgo, mainDeck, dropPile, flas
 
         {subtab === "forum" && (
           <ForumTab
+            user={user}
+            flashToast={flashToast}
+            onRequestLogin={onRequestLogin}
+          />
+        )}
+
+        {subtab === "lojas" && (
+          <StoresTab
             user={user}
             flashToast={flashToast}
             onRequestLogin={onRequestLogin}

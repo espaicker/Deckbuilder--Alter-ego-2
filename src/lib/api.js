@@ -102,6 +102,41 @@ export const api = {
 
   setTournamentRanked: (id, isRanked) => request("PATCH", `/tournaments/${id}/ranked`, { is_ranked: isRanked }),
 
+  // Lojas parceiras (Fase 7)
+  createStore: (data) => request("POST", "/stores", data),
+  getStores: () => request("GET", "/stores"),
+  getMyStores: () => request("GET", "/stores/mine"),
+  getPendingStores: () => {
+    const token = localStorage.getItem("deckbuilder:admin_token") || localStorage.getItem("deckbuilder:auth_token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return fetch("/api/admin/stores/pending", { headers }).then(async (r) => {
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || `Erro ${r.status}`);
+      return d;
+    });
+  },
+  approveStore: (id) => {
+    const token = localStorage.getItem("deckbuilder:admin_token") || localStorage.getItem("deckbuilder:auth_token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return fetch(`/api/admin/stores/${id}/approve`, { method: "POST", headers }).then(async (r) => {
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || `Erro ${r.status}`);
+      return d;
+    });
+  },
+  rejectStore: (id) => {
+    const token = localStorage.getItem("deckbuilder:admin_token") || localStorage.getItem("deckbuilder:auth_token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return fetch(`/api/admin/stores/${id}/reject`, { method: "POST", headers }).then(async (r) => {
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || `Erro ${r.status}`);
+      return d;
+    });
+  },
+
   // Ranking
   getRanking: (page = 1, limit = 50, search = "") => {
     const params = new URLSearchParams({ page, limit });

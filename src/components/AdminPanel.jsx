@@ -205,11 +205,47 @@ function DecksTable({ decks, onDelete, loading }) {
   );
 }
 
+// Mapa tipo+subtipo -> prefixo de ID (usado para sugerir proximo ID)
+const ID_PREFIX_MAP = {
+  "Alter Ego": "AE-",
+  "Ação/Ofensiva": "ACO-",
+  "Ação/Defensiva": "ACD-",
+  "Ação/Aceleração": "ACA-",
+  "Ação/Especial": "ACE-",
+  "Reação/Ofensiva": "REO-",
+  "Reação/Defensiva": "RED-",
+  "Reação/Aceleração": "REA-",
+  "Reação/Especial": "REE-",
+  "Tática/Buff": "TAB-",
+  "Tática/Suporte": "TAS-",
+};
+
+function suggestNextId(cards, type, subtype) {
+  const key = type === "Alter Ego" ? "Alter Ego" : `${type}/${subtype}`;
+  const prefix = ID_PREFIX_MAP[key];
+  if (!prefix) return "";
+  const existing = cards
+    .filter((c) => c.id.startsWith(prefix))
+    .map((c) => parseInt(c.id.replace(prefix, ""), 10))
+    .filter((n) => !isNaN(n));
+  const next = existing.length > 0 ? Math.max(...existing) + 1 : 1;
+  return prefix + String(next).padStart(4, "0");
+}
+
+function countByPrefix(cards) {
+  const counts = {};
+  for (const [key, prefix] of Object.entries(ID_PREFIX_MAP)) {
+    counts[key] = cards.filter((c) => c.id.startsWith(prefix)).length;
+  }
+  return counts;
+}
+
 function CardManager({ cards, meta, onReload, flash }) {
   const [showForm, setShowForm] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
   const [filter, setFilter] = useState("");
   const [filterType, setFilterType] = useState("Todos");
+  const [filterSubtype, setFilterSubtype] = useState("Todos");
 
   async function handleDelete(id, name) {
     if (!confirm(`Remover carta "${name}"? Isso altera o JSON de cartas.`)) return;
@@ -237,15 +273,20 @@ function CardManager({ cards, meta, onReload, flash }) {
 
   const filteredCards = cards.filter((c) => {
     if (filterType !== "Todos" && c.type !== filterType) return false;
+    if (filterSubtype !== "Todos" && c.subtype !== filterSubtype) return false;
     if (filter && !c.name.toLowerCase().includes(filter.toLowerCase()) && !c.id.toLowerCase().includes(filter.toLowerCase())) return false;
     return true;
   });
+
+  const prefixCounts = countByPrefix(cards);
+  const currentSubtypes = (filterType !== "Todos" && meta) ? (meta.types[filterType]?.subtypes || []) : [];
 
   if (showForm && meta) {
     return (
       <CardForm
         meta={meta}
         card={editingCard}
+        allCards={cards}
         onClose={handleFormClose}
         onSaved={() => { handleFormClose(); onReload(); }}
         flash={flash}
@@ -261,10 +302,21 @@ function CardManager({ cards, meta, onReload, flash }) {
       </div>
       <div className="ab-admin-cards-filters">
         <input className="ab-input" placeholder="Buscar por nome ou ID…" value={filter} onChange={(e) => setFilter(e.target.value)} />
-        <select className="ab-input ab-select" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+        <select className="ab-input ab-select" value={filterType} onChange={(e) => { setFilterType(e.target.value); setFilterSubtype("Todos"); }}>
           <option value="Todos">Todos os tipos</option>
           {meta && Object.keys(meta.types).map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
+        {currentSubtypes.length > 0 && (
+          <select className="ab-input ab-select" value={filterSubtype} onChange={(e) => setFilterSubtype(e.target.value)}>
+            <option value="Todos">Todos os subtipos</option>
+            {currentSubtypes.map((st) => <option key={st} value={st}>{st}</option>)}
+          </select>
+        )}
+      </div>
+      <div className="ab-admin-cards-counts" style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px", fontSize: "12px" }}>
+        {Object.entries(prefixCounts).map(([key, cnt]) => (
+          <span key={key} style={{ background: "var(--surface, #1e2128)", padding: "3px 8px", borderRadius: "4px" }}>{key}: <strong>{cnt}</strong></span>
+        ))}
       </div>
       <table className="ab-admin-table">
         <thead>
@@ -292,13 +344,21 @@ function CardManager({ cards, meta, onReload, flash }) {
   );
 }
 
-function CardForm({ meta, card, onClose, onSaved, flash }) {
+function CardForm({ meta, card, onClose, onSaved, flash, allCards }) {
   const isEditing = !!card;
   const [id, setId] = useState(card?.id || "");
   const [name, setName] = useState(card?.name || "");
   const [type, setType] = useState(card?.type || "Ação");
   const [subtype, setSubtype] = useState(card?.subtype || "");
   const [colors, setColors] = useState(card?.colors || []);
+
+  // Auto-sugere proximo ID quando tipo/subtipo mudam (so para carta nova)
+  function updateSuggestedId(newType, newSubtype) {
+    if (!isEditing && allCards) {
+      const suggested = suggestNextId(allCards, newType, newSubtype);
+      if (suggested) setId(suggested);
+    }
+  }
   const [cost, setCost] = useState(card?.cost ?? 0);
   const [effect, setEffect] = useState(card?.effect || "");
   const [keywords, setKeywords] = useState(card?.keywords || []);
@@ -442,14 +502,14 @@ function CardForm({ meta, card, onClose, onSaved, flash }) {
         <div className="ab-card-form-row">
           <label className="ab-auth-label">
             Tipo
-            <select className="ab-input ab-select" value={type} onChange={(e) => { setType(e.target.value); setSubtype(""); }}>
+            <select className="ab-input ab-select" value={type} onChange={(e) => { setType(e.target.value); setSubtype(""); updateSuggestedId(e.target.value, ""); }}>
               {Object.keys(meta.types).map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
           {subtypes.length > 0 && (
             <label className="ab-auth-label">
               Subtipo
-              <select className="ab-input ab-select" value={subtype} onChange={(e) => setSubtype(e.target.value)}>
+              <select className="ab-input ab-select" value={subtype} onChange={(e) => { setSubtype(e.target.value); updateSuggestedId(type, e.target.value); }}>
                 <option value="">— selecione —</option>
                 {subtypes.map((st) => <option key={st} value={st}>{st}</option>)}
               </select>

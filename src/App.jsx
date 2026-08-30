@@ -290,6 +290,7 @@ export default function DeckBuilder() {
   const [dropPile, setDropPile] = useState({});
   const [filterType, setFilterType] = useState("Todos");
   const [filterSubtype, setFilterSubtype] = useState("Todos");
+  const [filterColor, setFilterColor] = useState("Todas");
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [savedDecks, setSavedDecks] = useState([]);
@@ -334,10 +335,11 @@ export default function DeckBuilder() {
     return poolCards.filter((c) => {
       if (filterType !== "Todos" && c.type !== filterType) return false;
       if (filterSubtype !== "Todos" && c.subtype !== filterSubtype) return false;
+      if (filterColor !== "Todas" && !c.colors.includes(filterColor)) return false;
       if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [poolCards, filterType, filterSubtype, search]);
+  }, [poolCards, filterType, filterSubtype, filterColor, search]);
 
   const mainDeckCount = useMemo(
     () => countEntries(mainDeck),
@@ -359,6 +361,7 @@ export default function DeckBuilder() {
     setDropPile({});
     setFilterType("Todos");
     setFilterSubtype("Todos");
+    setFilterColor("Todas");
     setTab("deck");
   }
 
@@ -1076,6 +1079,26 @@ export default function DeckBuilder() {
                     </button>
                   ))}
                 </div>
+                {allowedColors.length > 1 && (
+                  <div className="ab-chip-row">
+                    <button
+                      className={`ab-chip ab-chip-sm ${filterColor === "Todas" ? "is-active" : ""}`}
+                      onClick={() => setFilterColor("Todas")}
+                    >
+                      todas as cores
+                    </button>
+                    {allowedColors.map((color) => (
+                      <button
+                        key={color}
+                        className={`ab-chip ab-chip-sm ${filterColor === color ? "is-active" : ""}`}
+                        onClick={() => setFilterColor(color)}
+                        style={filterColor === color ? { background: COLOR_HEX[color], borderColor: COLOR_HEX[color], color: "#0B0C0F" } : undefined}
+                      >
+                        {color}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {availableSubtypes.length > 0 && (
                   <div className="ab-chip-row">
                     <button

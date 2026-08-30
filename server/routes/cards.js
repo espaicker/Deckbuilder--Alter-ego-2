@@ -1,11 +1,14 @@
 import { Router } from "express";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "fs";
+import multer from "multer";
+import sharp from "sharp";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../middleware/auth.js";
 
 const router = Router();
+const uploadImage = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -169,93 +172,42 @@ router.delete("/:id", requireAdmin, (req, res) => {
 });
 
 const CARDS_IMG_DIR = join(__dirname, "../../public/assets/cards");
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const EXT_MAP = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" };
 
 /**
- * POST /api/admin/cards/:id/image — Upload de imagem para uma carta
- * Recebe multipart/form-data com campo "image"
+ * POST /api/admin/cards/:id/image - upload de imagem da carta.
+ * multer (memory) + sharp: valida imagem real, reprocessa e salva
+ * SEMPRE como <ID>.jpg. Substitui o parser multipart manual antigo.
  */
-router.post("/:id/image", requireAdmin, (req, res) => {
-  const cardId = req.params.id;
-
-  // Validate card exists
-  const data = readCardsData();
-  if (!data.cards.some((c) => c.id === cardId)) {
-    return res.status(404).json({ error: "Carta nao encontrada." });
-  }
-
-  const contentType = req.headers["content-type"] || "";
-  if (!contentType.includes("multipart/form-data")) {
-    return res.status(400).json({ error: "Envie como multipart/form-data." });
-  }
-
-  // Collect raw body
-  const chunks = [];
-  let size = 0;
-
-  req.on("data", (chunk) => {
-    size += chunk.length;
-    if (size > MAX_IMAGE_SIZE) {
-      req.destroy();
-      return;
+router.post("/:id/image", requireAdmin, uploadImage.single("image"), async (req, res) => {
+  try {
+    const cardId = req.params.id;
+    const data = readCardsData();
+    if (!data.cards.some((c) => c.id === cardId)) {
+      return res.status(404).json({ error: "Carta nao encontrada." });
     }
-    chunks.push(chunk);
-  });
-
-  req.on("end", () => {
-    if (size > MAX_IMAGE_SIZE) {
-      return res.status(413).json({ error: "Imagem muito grande (max 5MB)." });
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhuma imagem enviada." });
     }
-
-    const raw = Buffer.concat(chunks);
-    const boundary = contentType.split("boundary=")[1];
-    if (!boundary) return res.status(400).json({ error: "Boundary nao encontrado." });
-
-    // Parse multipart manually (simple single-file)
-    const parts = raw.toString("binary").split("--" + boundary);
-    let imageBuffer = null;
-    let mimeType = null;
-
-    for (const part of parts) {
-      if (part.includes("Content-Disposition") && part.includes('name="image"')) {
-        const headerEnd = part.indexOf("\r\n\r\n");
-        if (headerEnd === -1) continue;
-        const headers = part.slice(0, headerEnd);
-        const body = part.slice(headerEnd + 4);
-        // Remove trailing \r\n--
-        const cleaned = body.replace(/\r\n$/, "");
-        imageBuffer = Buffer.from(cleaned, "binary");
-
-        const ctMatch = headers.match(/Content-Type:\s*(.+)/i);
-        mimeType = ctMatch ? ctMatch[1].trim() : "image/jpeg";
-      }
+    let processed;
+    try {
+      processed = await sharp(req.file.buffer).jpeg({ quality: 90 }).toBuffer();
+    } catch (imgErr) {
+      return res.status(400).json({ error: "Arquivo invalido. Envie uma imagem real (JPG, PNG ou WebP)." });
     }
-
-    if (!imageBuffer || imageBuffer.length === 0) {
-      return res.status(400).json({ error: "Nenhuma imagem encontrada no upload." });
-    }
-    if (!ALLOWED_TYPES.has(mimeType)) {
-      return res.status(400).json({ error: "Tipo de imagem invalido. Use JPG, PNG ou WebP." });
-    }
-
-    // Save file
     if (!existsSync(CARDS_IMG_DIR)) {
       mkdirSync(CARDS_IMG_DIR, { recursive: true });
     }
-
-    const ext = EXT_MAP[mimeType] || ".jpg";
-    const filename = cardId + ext;
-    const filepath = join(CARDS_IMG_DIR, filename);
-    writeFileSync(filepath, imageBuffer);
-
+    [".png", ".webp"].forEach((ext) => {
+      const old = join(CARDS_IMG_DIR, cardId + ext);
+      if (existsSync(old)) { try { unlinkSync(old); } catch {} }
+    });
+    const filename = cardId + ".jpg";
+    writeFileSync(join(CARDS_IMG_DIR, filename), processed);
     res.json({ message: "Imagem salva!", filename });
-  });
-
-  req.on("error", () => {
+  } catch (err) {
+    console.error("[admin/cards] image upload error:", err);
     res.status(500).json({ error: "Erro ao processar upload." });
-  });
+  }
 });
 
 export default router;

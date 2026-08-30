@@ -370,6 +370,7 @@ function CardForm({ meta, card, onClose, onSaved, flash, allCards }) {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [imgCacheBust, setImgCacheBust] = useState(0);
 
   const typeInfo = meta.types[type];
   const subtypes = typeInfo?.subtypes || [];
@@ -420,6 +421,7 @@ function CardForm({ meta, card, onClose, onSaved, flash, allCards }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      setImgCacheBust(Date.now());
     } catch (err) {
       flash("Erro ao enviar imagem: " + err.message);
     } finally {
@@ -493,7 +495,7 @@ function CardForm({ meta, card, onClose, onSaved, flash, allCards }) {
           <span className="ab-auth-label">Imagem da carta</span>
           <div className="ab-card-form-image-upload">
             {imagePreview && <img src={imagePreview} alt="Preview" className="ab-card-form-image-preview" />}
-            {!imagePreview && isEditing && <img src={`/assets/cards/${card.id}.jpg`} alt="Atual" className="ab-card-form-image-preview" onError={(e) => { e.target.style.display = "none"; }} />}
+            {!imagePreview && isEditing && <img src={`/assets/cards/${card.id}.jpg${imgCacheBust ? `?v=${imgCacheBust}` : ""}`} alt="Atual" className="ab-card-form-image-preview" onError={(e) => { e.target.style.display = "none"; }} />}
             <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageSelect} className="ab-input" />
             <span className="ab-card-form-image-hint">JPG, PNG ou WebP (max 5MB). O nome sera baseado no ID da carta.</span>
           </div>

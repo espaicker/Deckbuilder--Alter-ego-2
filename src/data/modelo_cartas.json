@@ -255,7 +255,7 @@
       "id": "ACA-0002",
       "name": "Quebra de Armadura",
       "type": "Ação",
-      "subtype": "auxiliar",
+      "subtype": "especial",
       "colors": [
         "Vermelho"
       ],
@@ -686,7 +686,7 @@
       "attributes": {
         "defesa": 1
       },
-      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo anexar, para cada quatro cartas em seu descarte, Trilha de Expedição ganhará 1 Ponto de Resistência adicional.",
+      "effect": "Reforçar 1 (Ao anexar, uma outra carta \nalvo anexada ao seu Alter Ego ganhará X \nPontos adicionais em seu respectivo\n Atributo. Sendo X o nível de Reforçar.)\n\nAnexe esta carta ao seu Alter Ego.\n\nAo anexar, compre uma carta, em seguida,\ndescarte uma carta da sua mão.",
       "keywords": []
     },
     {
@@ -772,7 +772,7 @@
       "attributes": {
         "defesa": 1
       },
-      "effect": "Ao anexar, a carta alvo anexada ao seu Alter Ego ganhará 2 Pontos adicionais em seu respectivo Atributo.",
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo anexar, Reforçar 2 (Quando esta carta é \nanexada, uma outra carta alvo anexada \nao seu Alter Ego ganhará X Pontos \nadicionais em seu respectivo Atributo. \nSendo X o nível de Reforçar.)",
       "keywords": []
     },
     {
@@ -850,7 +850,7 @@
     },
     {
       "id": "ACO-0013",
-      "name": "Manto da Rainha",
+      "name": "Mandato da Rainha",
       "type": "Ação",
       "subtype": "ofensiva",
       "colors": [
@@ -929,7 +929,7 @@
       "id": "ACE-0003",
       "name": "Ordem do Caçador",
       "type": "Ação",
-      "subtype": "especial",
+      "subtype": "auxiliar",
       "colors": [
         "Amarelo"
       ],
@@ -1150,6 +1150,540 @@
       "attributes": {},
       "effect": null,
       "keywords": []
+    },
+    {
+      "id": "AE-0005",
+      "name": "Dra.Nebula",
+      "type": "Alter Ego",
+      "subtype": null,
+      "colors": [
+        "Roxo",
+        "Amarelo"
+      ],
+      "cost": null,
+      "attributes": {
+        "vida": 32,
+        "ataque": 2,
+        "defesa": 2
+      },
+      "effect": "Uma vez no turno, Desative 1 DROP: Olhe a carta do topo do seu próprio deck. Você poderá mantê-la no topo ou descartá-la.\n\nUma vez no turno, quando uma carta for descartada\ndo topo do seu próprio deck pelos seus efeitos ou pela sua habilidade, Desative uma carta que esteja Ativada no campo de um oponente, exceto por Alter Ego.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0006",
+      "name": "Planejar Emboscada",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Destrua uma carta em seu campo ou anexada\nao seu Alter Ego. Se fizer isso, destrua uma \nTática - Superior em campo.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0017",
+      "name": "Frenesi",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 4
+      },
+      "effect": "Ao anexar, o seu Alter Ego perderá 2 Pontos \nde Vida.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0015",
+      "name": "Rompe Defesas",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Ao anexar, a Ação - Defensiva anexada ao \nAlter Ego alvo perderá 2 pontos de resistência.",
+      "keywords": []
+    },
+    {
+      "id": "ACE-0005",
+      "name": "Tributo Vital",
+      "type": "Ação",
+      "subtype": "especial",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 7,
+      "attributes": {},
+      "effect": "Até o começo do seu próximo turno, \npara cada DROP que um oponente Desativar, \no seu respectivo Alter Ego perderá 1 Ponto de Vida.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0007",
+      "name": "Senda da Navalha",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Vermelho"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Escolha uma carta anexada a um Alter Ego alvo. \nAquele Alter Ego perderá Pontos de Vida \nequivalente ao Atributo da carta escolhida.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0008",
+      "name": "Punir Ganancia",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Até o começo do seu próximo turno, cada \noponente não poderá comprar cartas por \nefeitos.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0009",
+      "name": "Silenciar",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Cancele a habilidade do Alter Ego alvo.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0010",
+      "name": "Atração Magnetica",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Retorne uma carta alvo em campo ou anexada a\num Alter Ego para a mão do seu usuário.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0011",
+      "name": "Sinal de Alerta",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Cancele a carta alvo. Se fizer isso, coloque \na carta cancelada no topo do deck do seu \nusuário.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0018",
+      "name": "Tensão Alternada",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Azul"
+      ],
+      "cost": 3,
+      "attributes": {
+        "ataque": 2
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo atacar, retorne uma carta alvo \nanexada a um Alter Ego para a mão \ndo seu usuário.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0016",
+      "name": "Força Verde",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo anexar, para cada quatro cartas em seu \ndescarte, Trilha de Expedição ganhará 1 \nPonto de Resistência adicional.",
+      "keywords": []
+    },
+    {
+      "id": "RED-0003",
+      "name": "Espreita Ofidica",
+      "type": "Reação",
+      "subtype": "defensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Ao anexar, coloque uma Ação - Defensiva alvo \nou uma Ação - Ofensiva alvo de custo 2 ou \nmenor do seu descarte na sua mão.",
+      "keywords": []
+    },
+    {
+      "id": "REA-0010",
+      "name": "Garras Caniforme",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Olhes as três cartas do topo do seu próprio\ndeck, em seguida, coloque uma carta na sua \nmão e as demais cartas no seu descarte.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0019",
+      "name": "Investida Feroz",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Verde"
+      ],
+      "cost": 7,
+      "attributes": {
+        "ataque": 2
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo atacar, anexe ao seu Alter Ego cartas do seu \ndescarte cujo a soma total dos custos seja igual \nou inferior a 7.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0017",
+      "name": "Manto do Caçador",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Enquanto estiver anexado, até o final desse turno, \ntoda vez que uma ou mais cartas que você controla \nforem Ativadas no seu campo pelos seus efeitos ou \npela sua habilidade, Manto ganhará 1 Ponto de \nResistência adicional.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0018",
+      "name": "Torre Belica",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 4,
+      "attributes": {
+        "defesa": 2
+      },
+      "effect": null,
+      "keywords": []
+    },
+    {
+      "id": "ACO-0020",
+      "name": "Reflexo Afiado",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nEsta carta não desanexa no final do ataque, ao \ninvés disso, desanexa no final do seu turno.",
+      "keywords": []
+    },
+    {
+      "id": "TAS-0006",
+      "name": "Lucro de Ativos",
+      "type": "Tática",
+      "subtype": "superior",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Desative esta carta e 1 DROP: Ative 2 DROPs \nque estejam Desativados em seu campo.",
+      "keywords": []
+    },
+    {
+      "id": "ACA-0006",
+      "name": "Sexto Sentido",
+      "type": "Ação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Transpor\n\nRevela as quatro cartas do topo do seu próprio \ndeck. Escolha uma carta revelada, em seguida, \njogue-a com o seu custo de DROP reduzido em 2. \nEmbaralhe as demais cartas no seu próprio deck,",
+      "keywords": [
+        "Transpor"
+      ]
+    },
+    {
+      "id": "REA-0011",
+      "name": "Pagar com Sangue",
+      "type": "Reação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Cancele a carta alvo de um oponente. Se fizer isso,\no seu Alter Ego perderá Pontos de Vida equivalente\nao custo da carta cancelada.",
+      "keywords": []
+    },
+    {
+      "id": "ACA-0007",
+      "name": "Segunda Chance",
+      "type": "Ação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Coloque uma carta alvo de custo 3 ou menor do seu \ndescarte na sua mão, exceto por Seguunda Chance",
+      "keywords": []
+    },
+    {
+      "id": "ACE-0006",
+      "name": "Sifão de Vida",
+      "type": "Ação",
+      "subtype": "especial",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Some a quantidade de cartas no seu descarte \ncom a quantidade de cartas no descarte de um \noutro jogador alvo. Para cada cinco cartas, o \nAlter Ego alvo perderá 1 Ponto de Vida e o seu \nAlter Ego ganhará 1 Ponto de Vida.",
+      "keywords": []
+    },
+    {
+      "id": "TAB-0005",
+      "name": "Desgaste Constante",
+      "type": "Tática",
+      "subtype": "básico",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Em todos turnos, Desative esta carta e 1 DROP: \nA carta alvo anexada a um Alter Ego perderá \n1 Ponto em seu respectivo Atributo até o\nfinal do combate.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0012",
+      "name": "Expurgo Forçado",
+      "type": "Ação",
+      "subtype": "especial",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "O jogador alvo escolherá uma carta anexada ao \nseu próprio Alter Ego. Em seguida, destrua as \noutras cartas que estejam anexadas.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0021",
+      "name": "Sem Piedade",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 5,
+      "attributes": {
+        "ataque": 5
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo anexar, destrua uma Tática que esteja \nDesativada em campo.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0022",
+      "name": "Extorção",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 3,
+      "attributes": {
+        "ataque": 2
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nNo final do ataque, o jogador alvo descartará\numa carta da própria mão.",
+      "keywords": []
+    },
+    {
+      "id": "REE-0013",
+      "name": "Cataclisma",
+      "type": "Reação",
+      "subtype": "especial",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 5,
+      "attributes": {},
+      "effect": "Destrua todas as cartas anexadas em cada \nAlter Ego e todas as Táticas em campo.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0023",
+      "name": "Iniciais Heresias",
+      "type": "Ação",
+      "subtype": "ofensiva",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 2,
+      "attributes": {
+        "ataque": 0
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo atacar, durante este turno, se você descartou\nduas ou mais cartas do topo do seu próprio deck\npelos seus efeitos ou pela sua habilidade,\nIniciais Heresias ganhará 3 Pontos de Dano\nadicionais.",
+      "keywords": []
+    },
+    {
+      "id": "ACD-0019",
+      "name": "Enfermidade Pulsante",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 4,
+      "attributes": {
+        "defesa": 3
+      },
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo anexar, olhe as duas cartas do topo do \ndeck de um outro jogador. Em seguida, coloque \numa das cartas no fundo do deck do seu usuário \ne retorne a outra carta para o topo.",
+      "keywords": []
+    },
+    {
+      "id": "ACO-0024",
+      "name": "Troca Equivalente",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 3,
+      "attributes": {
+        "ataque": 3
+      },
+      "effect": "Exumar (Se esta carta foi descartada do topo \ndo seu próprio deck pelos seus efeitos ou pela \nsua habilidade, jogue-a sem pagar o seu custo.)\n\nAnexe esta carta ao seu Alter Ego.\n\nCada jogador descartará uma carta do topo \ndo próprio deck.",
+      "keywords": [
+        "Exumar"
+      ]
+    },
+    {
+      "id": "ACA-0008",
+      "name": "Compra Abissal",
+      "type": "Ação",
+      "subtype": "auxiliar",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 2,
+      "attributes": {},
+      "effect": "Exumar (Se esta carta foi descartada do topo \ndo seu próprio deck pelos seus efeitos ou pela \nsua habilidade, jogue-a sem pagar o seu custo.)\n\nDescarte uma carta do topo do seu próprio \ndeck, em seguida, compre uma carta.",
+      "keywords": [
+        "Exumar"
+      ]
+    },
+    {
+      "id": "ACD-0020",
+      "name": "Cerimonia Fúnebre",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 2,
+      "attributes": {
+        "defesa": 2
+      },
+      "effect": "Exumar (Se esta carta foi descartada do topo \ndo seu próprio deck pelos seus efeitos ou pela \nsua habilidade, jogue-a sem pagar o seu custo.)\n\nAnexe esta carta ao seu Alter Ego.\n\nAo anexar, o jogador alvo descartará \numa carta do topo do próprio deck.",
+      "keywords": [
+        "Exumar"
+      ]
+    },
+    {
+      "id": "ACD-0021",
+      "name": "Receptáculo Amaldiçoado",
+      "type": "Ação",
+      "subtype": "defensiva",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 3,
+      "attributes": {
+        "defesa": 1
+      },
+      "effect": "Exumar (Se esta carta foi descartada do topo \ndo seu próprio deck pelos seus efeitos ou pela \nsua habilidade, jogue-a sem pagar o seu custo.)\n\nAnexe esta carta ao seu Alter Ego.\n\nEnquanto estiver anexado, até o final desse turno, \ntoda vez que você descartar uma carta do topo \ndo seu próprio deck pelos seus efeitos ou pela \nsua habilidade, Receptáculo Amaldiçoado \nganhará 1 Ponto de Resistência adicional.",
+      "keywords": [
+        "Exumar"
+      ]
+    },
+    {
+      "id": "ACE-0007",
+      "name": "Buscar Oculto",
+      "type": "Ação",
+      "subtype": "especial",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Exumar (Se esta carta foi descartada do topo \ndo seu próprio deck pelos seus efeitos ou pela \nsua habilidade, jogue-a sem pagar o seu custo.)\n\nCompre uma carta, em seguida, o oponente \nalvo descartará uma carta do topo do \npróprio deck.",
+      "keywords": [
+        "Exumar"
+      ]
+    },
+    {
+      "id": "TAS-0007",
+      "name": "Garganta do Diabo",
+      "type": "Tática",
+      "subtype": "superior",
+      "colors": [
+        "Roxo"
+      ],
+      "cost": 3,
+      "attributes": {},
+      "effect": "Exumar (Se esta carta foi descartada do topo \ndo seu próprio deck pelos seus efeitos ou pela \nsua habilidade, jogue-a sem pagar o seu custo.)\n\nColoque esta carta no seu campo.\n\nDesative esta carta e 1 DROP: Coloque uma carta\ndo seu descarte no topo do seu próprio deck.",
+      "keywords": [
+        "Exumar"
+      ]
+    },
+    {
+      "id": "TAS-0008",
+      "name": "Reerguer",
+      "type": "Tática",
+      "subtype": "superior",
+      "colors": [
+        "Amarelo"
+      ],
+      "cost": 1,
+      "attributes": {},
+      "effect": "Coloque esta carta em seu campo.\n\nAo entrar em campo, Reativar (Ative uma \ncarta que esteja Desativada no seu campo.)\n\nDesative esta carta e 2 DROPSs: Ative o \nseu Alter Ego.",
+      "keywords": [
+        "Reativar"
+      ]
     }
   ]
 }

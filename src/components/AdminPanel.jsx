@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { COLOR_HEX } from "../lib/constants.js";
+import { COLOR_HEX, DROP_IMAGE_ID } from "../lib/constants.js";
+import { safeCardImagePath, escapeHtml } from "../lib/sanitize.js";
 import AnalyticsPanel from "./AnalyticsPanel.jsx";
 import { countEntries } from "../lib/deckRules.js";
 import { api } from "../lib/api.js";
@@ -240,6 +241,108 @@ function countByPrefix(cards) {
   return counts;
 }
 
+// Gera um PDF (proxies) com a COLECAO INTEIRA para playtest: cada Alter Ego 1x,
+// cada carta jogavel 4x e 10 Drops de cada cor. Mesmo layout A4 3x3 dos proxies
+// do deckbuilder (com marcas de corte). Uso restrito ao admin.
+function printFullCollectionPdf(cards, colors, flash) {
+  const ALTER_COPIES = 1;
+  const CARD_COPIES = 4;
+  const DROP_COPIES = 10;
+
+  const imgUrl = (id) => {
+    const safePath = safeCardImagePath(id);
+    if (!safePath) return "";
+    return new URL(safePath, window.location.href).href;
+  };
+
+  const alterEgos = cards.filter((c) => c.type === "Alter Ego").sort((a, b) => a.name.localeCompare(b.name));
+  const playable = cards.filter((c) => c.type !== "Alter Ego" && c.type !== "Drop").sort((a, b) => a.name.localeCompare(b.name));
+  const dropColors = Array.isArray(colors) ? colors : [];
+
+  const printItems = [
+    ...alterEgos.flatMap((c) => Array.from({ length: ALTER_COPIES }, () => ({ id: c.id, name: c.name, img: imgUrl(c.id) }))),
+    ...playable.flatMap((c) => Array.from({ length: CARD_COPIES }, () => ({ id: c.id, name: c.name, img: imgUrl(c.id) }))),
+    ...dropColors.flatMap((color) => {
+      const did = DROP_IMAGE_ID[color];
+      if (!did) return [];
+      return Array.from({ length: DROP_COPIES }, () => ({ id: did, name: "Drop " + color, img: imgUrl(did) }));
+    }),
+  ].filter((it) => it.img);
+
+  if (printItems.length === 0) {
+    flash("Nenhuma carta com imagem encontrada para imprimir.");
+    return;
+  }
+
+  const popup = window.open("", "_blank");
+  if (!popup) {
+    flash("Permita pop-ups para gerar o PDF da colecao.");
+    return;
+  }
+
+  const dateStr = new Date().toLocaleDateString("pt-BR");
+  const perPage = 9;
+  const cardPageCount = Math.ceil(printItems.length / perPage);
+  const totalPages = cardPageCount + 1;
+
+  const footer = (pageLabel) =>
+    '<footer class="proxy-footer">Colecao completa \u00b7 ' + dateStr + ' \u00b7 ' + pageLabel + '</footer>';
+
+  const cell = (item) =>
+    '<div class="proxy-cell">' +
+      '<i class="crop crop-tl"></i><i class="crop crop-tr"></i><i class="crop crop-bl"></i><i class="crop crop-br"></i>' +
+      '<article class="proxy-card"><img src="' + item.img + '" alt="' + escapeHtml(item.name) + '"></article>' +
+    '</div>';
+
+  const cardPages = Array.from({ length: cardPageCount }, (_, index) => {
+    const pageItems = printItems.slice(index * perPage, index * perPage + perPage);
+    return '<section class="proxy-page"><div class="proxy-grid">' + pageItems.map(cell).join("") + '</div>' + footer('pagina ' + (index + 2) + ' de ' + totalPages) + '</section>';
+  }).join("");
+
+  const summaryPage =
+    '<section class="proxy-page proxy-checklist">' +
+      '<h1>Colecao completa para playtest</h1>' +
+      '<div class="checklist-columns">' +
+        '<ul class="checklist-list">' +
+          '<li><span>' + alterEgos.length + '</span> Alter Egos (' + ALTER_COPIES + 'x cada)</li>' +
+          '<li><span>' + playable.length + '</span> cartas jogaveis (' + CARD_COPIES + 'x cada)</li>' +
+          '<li><span>' + dropColors.length + '</span> cores de Drop (' + DROP_COPIES + 'x cada)</li>' +
+          '<li><span>' + printItems.length + '</span> cartas no total</li>' +
+        '</ul>' +
+      '</div>' +
+      '<p class="checklist-note">As marcas nos cantos indicam onde cortar. Confira o total impresso antes de recortar.</p>' +
+      footer('pagina 1 de ' + totalPages) +
+    '</section>';
+
+  const styles =
+    '@page { size: A4 portrait; margin: 6mm; }' +
+    '* { box-sizing: border-box; }' +
+    'body { margin: 0; background: #fff; font-family: Arial, Helvetica, sans-serif; }' +
+    '.proxy-page { position: relative; width: 198mm; height: 285mm; break-after: page; page-break-after: always; }' +
+    '.proxy-page:last-child { break-after: auto; page-break-after: auto; }' +
+    '.proxy-grid { display: grid; grid-template-columns: repeat(3, 63mm); grid-auto-rows: 88mm; gap: 4.5mm; }' +
+    '.proxy-cell { position: relative; width: 63mm; height: 88mm; }' +
+    '.proxy-card { width: 100%; height: 100%; overflow: hidden; background: #fff; }' +
+    '.proxy-card img { display: block; width: 100%; height: 100%; object-fit: cover; }' +
+    '.crop { position: absolute; width: 3mm; height: 3mm; border: 0 solid #9a9a9a; }' +
+    '.crop-tl { top: -2.2mm; left: -2.2mm; border-top-width: .2mm; border-left-width: .2mm; }' +
+    '.crop-tr { top: -2.2mm; right: -2.2mm; border-top-width: .2mm; border-right-width: .2mm; }' +
+    '.crop-bl { bottom: -2.2mm; left: -2.2mm; border-bottom-width: .2mm; border-left-width: .2mm; }' +
+    '.crop-br { bottom: -2.2mm; right: -2.2mm; border-bottom-width: .2mm; border-right-width: .2mm; }' +
+    '.proxy-footer { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 2.6mm; color: #999; padding-top: 1.5mm; border-top: .15mm solid #ddd; }' +
+    '.proxy-checklist h1 { font-size: 7mm; margin: 0 0 6mm 0; }' +
+    '.checklist-columns { font-size: 3.6mm; line-height: 1.9; }' +
+    '.checklist-list { list-style: none; margin: 0; padding: 0; }' +
+    '.checklist-list li span { display: inline-block; width: 12mm; color: #666; font-variant-numeric: tabular-nums; font-weight: bold; }' +
+    '.checklist-note { position: absolute; bottom: 12mm; left: 0; right: 0; font-size: 3mm; color: #999; }' +
+    '@media screen { body { padding: 8mm; background: #ddd; } .proxy-page { margin: 0 auto 8mm; background: #fff; box-shadow: 0 2px 10px #777; } }';
+
+  const loader = '<' + 'script>window.addEventListener("load",function(){Promise.all([].slice.call(document.images).map(function(image){return image.complete?Promise.resolve():new Promise(function(resolve){image.onload=image.onerror=resolve;});})).then(function(){setTimeout(function(){window.print();},200);});});<' + '/script>';
+
+  popup.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Colecao completa - proxies</title><style>' + styles + '</style></head><body>' + summaryPage + cardPages + loader + '</body></html>');
+  popup.document.close();
+}
+
 function CardManager({ cards, meta, onReload, flash }) {
   const [showForm, setShowForm] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
@@ -298,7 +401,10 @@ function CardManager({ cards, meta, onReload, flash }) {
     <div className="ab-admin-table-wrap">
       <div className="ab-admin-cards-header">
         <h3 className="ab-sidebar-group-title">Cartas ({cards.length})</h3>
-        <button className="ab-btn ab-btn-primary" onClick={handleNewCard}>+ Nova Carta</button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button className="ab-btn ab-btn-ghost" onClick={() => printFullCollectionPdf(cards, meta?.colors, flash)}>Imprimir coleção (proxies)</button>
+          <button className="ab-btn ab-btn-primary" onClick={handleNewCard}>+ Nova Carta</button>
+        </div>
       </div>
       <div className="ab-admin-cards-filters">
         <input className="ab-input" placeholder="Buscar por nome ou ID…" value={filter} onChange={(e) => setFilter(e.target.value)} />

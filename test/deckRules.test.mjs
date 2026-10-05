@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { attackDefenseAverages, colorBreakdown, costCurve, createCardIndex, createExportText, normalizeBuild, normalizeSavedDeckIndex, typeSubtypeBreakdown, validateDeck } from "../src/lib/deckRules.js";
+import { attackDefenseAverages, colorBreakdown, combinedCopies, costCurve, createCardIndex, createExportText, normalizeBuild, normalizeSavedDeckIndex, standardDropPile, typeSubtypeBreakdown, validateDeck } from "../src/lib/deckRules.js";
 
 const cards = [
   { id: "AE-1", name: "Hero", type: "Alter Ego", colors: ["Azul"] },
@@ -9,21 +9,68 @@ const cards = [
 ];
 const cardIndex = createCardIndex(cards);
 
-test("normaliza dados persistidos", () => {
-  assert.deepEqual(normalizeBuild({ alterEgoId: "AE-1", mainDeck: { "AC-1": 2, REMOVIDA: 1, "AE-1": 1 }, dropPile: { Azul: 3, Rosa: 1 } }, cardIndex, ["Azul", "Vermelho"]), { alterEgoId: "AE-1", mainDeck: { "AC-1": 2 }, dropPile: { Azul: 3 } });
+// Gera um deck principal válido de 50 cartas azuis (13 cartas x 4, menos 2).
+const blueCards = Array.from({ length: 13 }, (_, i) => ({ id: `AZ-${i}`, name: `Azul ${i}`, type: "Ação", colors: ["Azul"] }));
+const fullIndex = createCardIndex([...cards, ...blueCards]);
+const fullMain = Object.fromEntries(blueCards.map((c, i) => [c.id, i < 12 ? 4 : 2])); // 12*4 + 2 = 50
+
+test("normaliza dados persistidos e ignora dropPile antigo", () => {
+  assert.deepEqual(
+    normalizeBuild({ alterEgoId: "AE-1", mainDeck: { "AC-1": 2, REMOVIDA: 1, "AE-1": 1 }, sideboard: { "AC-1": 1, FALSA: 2 }, dropPile: { Azul: 3 } }, cardIndex),
+    { alterEgoId: "AE-1", mainDeck: { "AC-1": 2 }, sideboard: { "AC-1": 1 } }
+  );
+});
+
+test("build antigo sem sideboard carrega com sideboard vazio", () => {
+  assert.deepEqual(normalizeBuild({ alterEgoId: "AE-1", mainDeck: { "AC-1": 2 }, dropPile: { Azul: 10 } }, cardIndex).sideboard, {});
 });
 
 test("valida cores, cópias e tamanhos", () => {
-  const issues = validateDeck({ alterEgo: cards[0], mainDeck: { "AC-1": 5, "AC-2": 1 }, dropPile: { Vermelho: 10 }, cardIndex });
+  const issues = validateDeck({ alterEgo: cards[0], mainDeck: { "AC-1": 5, "AC-2": 1 }, cardIndex });
   assert.ok(issues.some((issue) => issue.includes("máximo de 4")));
   assert.ok(issues.some((issue) => issue.includes("cores não permitidas")));
-  assert.ok(issues.some((issue) => issue.includes("Drop Vermelho não é permitido")));
   assert.ok(issues.some((issue) => issue.includes("Deck principal: 6/50")));
 });
 
-test("exportação tolera uma carta removida", () => {
-  const text = createExportText({ alterEgo: cards[0], mainDeck: { "AC-1": 1, REMOVIDA: 2 }, dropPile: { Azul: 10 }, cardIndex });
+test("deck de 50 com sideboard vazio é válido (drops não são validados)", () => {
+  assert.deepEqual(validateDeck({ alterEgo: cards[0], mainDeck: fullMain, sideboard: {}, cardIndex: fullIndex }), []);
+});
+
+test("sideboard com até 15 cartas é válido", () => {
+  const sideboard = { "AC-1": 4, "AZ-12": 2 }; // AZ-12 tem 2 no deck -> 4 no total
+  assert.deepEqual(validateDeck({ alterEgo: cards[0], mainDeck: fullMain, sideboard, cardIndex: fullIndex }), []);
+});
+
+test("sideboard acima de 15 cartas é rejeitado", () => {
+  const extra = Array.from({ length: 4 }, (_, i) => ({ id: `SB-${i}`, name: `Side ${i}`, type: "Ação", colors: ["Azul"] }));
+  const idx = createCardIndex([...cards, ...blueCards, ...extra]);
+  const sideboard = Object.fromEntries(extra.map((c) => [c.id, 4])); // 16
+  const issues = validateDeck({ alterEgo: cards[0], mainDeck: fullMain, sideboard, cardIndex: idx });
+  assert.ok(issues.some((issue) => issue.includes("Sideboard: 16/15")));
+});
+
+test("limite de 4 cópias soma deck + sideboard", () => {
+  const sideboard = { "AZ-0": 1 }; // AZ-0 já tem 4 no deck
+  const issues = validateDeck({ alterEgo: cards[0], mainDeck: fullMain, sideboard, cardIndex: fullIndex });
+  assert.ok(issues.some((issue) => issue.includes("Azul 0: máximo de 4 cópias (deck + sideboard)")));
+  assert.equal(combinedCopies(fullMain, sideboard, "AZ-0"), 5);
+});
+
+test("sideboard respeita as cores do Alter Ego", () => {
+  const issues = validateDeck({ alterEgo: cards[0], mainDeck: fullMain, sideboard: { "AC-2": 1 }, cardIndex: fullIndex });
+  assert.ok(issues.some((issue) => issue.includes("Carta Vermelha usa cores não permitidas")));
+});
+
+test("drops padrão: 10 de cada cor do Alter Ego", () => {
+  assert.deepEqual(standardDropPile({ colors: ["Vermelho", "Verde"] }), { Vermelho: 10, Verde: 10 });
+  assert.deepEqual(standardDropPile(null), {});
+});
+
+test("exportação tolera carta removida e lista sideboard e drops padrão", () => {
+  const text = createExportText({ alterEgo: cards[0], mainDeck: { "AC-1": 1, REMOVIDA: 2 }, sideboard: { "AC-1": 2 }, cardIndex });
   assert.match(text, /Carta indisponível \[REMOVIDA\]/);
+  assert.match(text, /SIDEBOARD \(2\/15\)\n2x Carta Azul \[AC-1\]/);
+  assert.match(text, /DROPS \(10\)\n10x Drop Azul/);
 });
 
 test("índice salvo elimina registros inválidos e duplicados", () => {

@@ -1,4 +1,18 @@
-export const DECK_RULES = Object.freeze({ mainDeckSize: 50, dropPileSize: 10, maxCopies: 4 });
+/**
+ * Regras de construção:
+ * - Deck principal: exatamente 50 cartas.
+ * - Sideboard: até 15 cartas extras, trocáveis com o deck antes das partidas.
+ * - Limite de cópias (4) vale para deck + sideboard somados, como no Magic.
+ * - Drops: não são escolhidos pelo jogador. Todo deck leva sempre 10 Drops de
+ *   cada cor do Alter Ego, e o jogador decide a composição na hora de jogar.
+ */
+export const DECK_RULES = Object.freeze({ mainDeckSize: 50, sideboardMaxSize: 15, dropsPerColor: 10, maxCopies: 4 });
+
+/** Monte de Drops padrão do Alter Ego: sempre `dropsPerColor` de cada cor dele. */
+export function standardDropPile(alterEgo, rules = DECK_RULES) {
+  if (!alterEgo || !Array.isArray(alterEgo.colors)) return {};
+  return Object.fromEntries(alterEgo.colors.map((color) => [color, rules.dropsPerColor]));
+}
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -25,19 +39,33 @@ function normalizeQuantities(entries, isAllowedKey) {
   return Object.fromEntries(Object.entries(entries).filter(([key, quantity]) => isAllowedKey(key) && isPositiveInteger(quantity)));
 }
 
-export function normalizeBuild(rawBuild, cardIndex, gameColors) {
+function isPlayableCard(card) {
+  return !!card && card.type !== "Alter Ego" && card.type !== "Drop";
+}
+
+/**
+ * Normaliza um build salvo (localStorage / deck nomeado). Builds antigos com
+ * `dropPile` continuam carregando: o monte salvo é simplesmente ignorado,
+ * porque os Drops agora são sempre o padrão do Alter Ego.
+ */
+export function normalizeBuild(rawBuild, cardIndex) {
   const raw = isRecord(rawBuild) ? rawBuild : {};
   const alterEgo = cardIndex.get(raw.alterEgoId);
   const alterEgoId = alterEgo?.type === "Alter Ego" ? alterEgo.id : null;
-  if (!alterEgoId) return { alterEgoId: null, mainDeck: {}, dropPile: {} };
+  if (!alterEgoId) return { alterEgoId: null, mainDeck: {}, sideboard: {} };
+  const isPlayableId = (id) => isPlayableCard(cardIndex.get(id));
   return {
     alterEgoId,
-    mainDeck: normalizeQuantities(raw.mainDeck, (id) => {
-      const card = cardIndex.get(id);
-      return card && card.type !== "Alter Ego" && card.type !== "Drop";
-    }),
-    dropPile: normalizeQuantities(raw.dropPile, (color) => gameColors.includes(color)),
+    mainDeck: normalizeQuantities(raw.mainDeck, isPlayableId),
+    sideboard: normalizeQuantities(raw.sideboard, isPlayableId),
   };
+}
+
+/** Soma de cópias de uma carta no deck principal + sideboard. */
+export function combinedCopies(mainDeck, sideboard, cardId) {
+  const main = isRecord(mainDeck) && isPositiveInteger(mainDeck[cardId]) ? mainDeck[cardId] : 0;
+  const side = isRecord(sideboard) && isPositiveInteger(sideboard[cardId]) ? sideboard[cardId] : 0;
+  return main + side;
 }
 
 export function normalizeSavedDeckIndex(rawIndex) {
@@ -51,32 +79,48 @@ export function normalizeSavedDeckIndex(rawIndex) {
   });
 }
 
-export function validateDeck({ alterEgo, mainDeck, dropPile, cardIndex, rules = DECK_RULES }) {
-  const issues = [];
-  const safeMainDeck = isRecord(mainDeck) ? mainDeck : {};
-  const safeDropPile = isRecord(dropPile) ? dropPile : {};
-  if (!alterEgo) return ["Nenhum Alter Ego selecionado."];
-  for (const [id, quantity] of Object.entries(safeMainDeck)) {
+function validateSection(entries, label, alterEgo, cardIndex, issues) {
+  for (const [id, quantity] of Object.entries(entries)) {
     const card = cardIndex.get(id);
-    if (!card || card.type === "Alter Ego" || card.type === "Drop") {
-      issues.push(`Carta inválida no deck: ${id}.`);
+    if (!isPlayableCard(card)) {
+      issues.push(`Carta inválida no ${label}: ${id}.`);
       continue;
     }
     if (!isPositiveInteger(quantity)) {
-      issues.push(`Quantidade inválida para ${card.name}.`);
+      issues.push(`Quantidade inválida para ${card.name} no ${label}.`);
       continue;
     }
-    if (quantity > rules.maxCopies) issues.push(`${card.name}: máximo de ${rules.maxCopies} cópias.`);
     if (!colorsSubset(card.colors, alterEgo.colors)) issues.push(`${card.name} usa cores não permitidas pelo Alter Ego.`);
   }
-  for (const [color, quantity] of Object.entries(safeDropPile)) {
-    if (!isPositiveInteger(quantity)) issues.push(`Quantidade inválida de Drop ${color}.`);
-    else if (!alterEgo.colors.includes(color)) issues.push(`Drop ${color} não é permitido pelo Alter Ego.`);
+}
+
+/**
+ * Valida deck principal + sideboard. Drops não são validados: são sempre o
+ * monte padrão do Alter Ego (ver standardDropPile).
+ */
+export function validateDeck({ alterEgo, mainDeck, sideboard, cardIndex, rules = DECK_RULES }) {
+  const issues = [];
+  const safeMainDeck = isRecord(mainDeck) ? mainDeck : {};
+  const safeSideboard = isRecord(sideboard) ? sideboard : {};
+  if (!alterEgo) return ["Nenhum Alter Ego selecionado."];
+
+  validateSection(safeMainDeck, "deck", alterEgo, cardIndex, issues);
+  validateSection(safeSideboard, "sideboard", alterEgo, cardIndex, issues);
+
+  // Limite de cópias conta deck + sideboard juntos.
+  const ids = new Set([...Object.keys(safeMainDeck), ...Object.keys(safeSideboard)]);
+  for (const id of ids) {
+    const card = cardIndex.get(id);
+    if (!isPlayableCard(card)) continue;
+    if (combinedCopies(safeMainDeck, safeSideboard, id) > rules.maxCopies) {
+      issues.push(`${card.name}: máximo de ${rules.maxCopies} cópias (deck + sideboard).`);
+    }
   }
+
   const mainDeckCount = countEntries(safeMainDeck);
-  const dropCount = countEntries(safeDropPile);
+  const sideboardCount = countEntries(safeSideboard);
   if (mainDeckCount !== rules.mainDeckSize) issues.push(`Deck principal: ${mainDeckCount}/${rules.mainDeckSize} cartas.`);
-  if (dropCount !== rules.dropPileSize) issues.push(`Monte de Drops: ${dropCount}/${rules.dropPileSize}.`);
+  if (sideboardCount > rules.sideboardMaxSize) issues.push(`Sideboard: ${sideboardCount}/${rules.sideboardMaxSize} cartas (máximo ${rules.sideboardMaxSize}).`);
   return issues;
 }
 
@@ -102,18 +146,25 @@ export function colorBreakdown(mainDeck, dropPile, cardIndex) {
   return { deckCounts, deckTotal, dropCounts, dropTotal };
 }
 
-export function createExportText({ alterEgo, mainDeck, dropPile, cardIndex, rules = DECK_RULES }) {
-  if (!alterEgo) return "";
-  const cards = Object.entries(isRecord(mainDeck) ? mainDeck : {})
+function exportLines(entries, cardIndex) {
+  return Object.entries(isRecord(entries) ? entries : {})
     .filter(([, quantity]) => isPositiveInteger(quantity))
     .map(([id, quantity]) => ({ id, quantity, card: cardIndex.get(id) }))
-    .sort((a, b) => (a.card?.name || a.id).localeCompare(b.card?.name || b.id));
-  const drops = Object.entries(isRecord(dropPile) ? dropPile : {}).filter(([, quantity]) => isPositiveInteger(quantity));
+    .sort((a, b) => (a.card?.name || a.id).localeCompare(b.card?.name || b.id))
+    .map(({ id, quantity, card }) => card ? `${quantity}x ${card.name} [${card.id}]` : `${quantity}x Carta indisponível [${id}]`);
+}
+
+export function createExportText({ alterEgo, mainDeck, sideboard, cardIndex, rules = DECK_RULES }) {
+  if (!alterEgo) return "";
+  const sideLines = exportLines(sideboard, cardIndex);
+  const drops = Object.entries(standardDropPile(alterEgo, rules));
   return [
     `ALTER EGO: ${alterEgo.name} [${alterEgo.id}]`, `CORES: ${alterEgo.colors.join(" / ")}`, "",
     `DECK (${countEntries(mainDeck || {})}/${rules.mainDeckSize})`,
-    ...cards.map(({ id, quantity, card }) => card ? `${quantity}x ${card.name} [${card.id}]` : `${quantity}x Carta indisponível [${id}]`),
-    "", `DROPS (${countEntries(dropPile || {})}/${rules.dropPileSize})`,
+    ...exportLines(mainDeck, cardIndex),
+    "", `SIDEBOARD (${countEntries(sideboard || {})}/${rules.sideboardMaxSize})`,
+    ...(sideLines.length ? sideLines : ["(vazio)"]),
+    "", `DROPS (${drops.reduce((total, [, quantity]) => total + quantity, 0)})`,
     ...drops.map(([color, quantity]) => `${quantity}x Drop ${color}`),
   ].join("\n");
 }

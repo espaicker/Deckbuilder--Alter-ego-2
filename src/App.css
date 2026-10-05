@@ -2534,3 +2534,29 @@
 .ab-account-data { margin-top: 8px; }
 .ab-btn-danger { color: #e06c75; }
 
+
+/* ===== Sideboard ===== */
+.ab-add-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+.ab-add-target-label {
+  font-size: 13px;
+  color: var(--text-muted, #8b8f99);
+}
+/* Badge do sideboard fica à esquerda, para não cobrir o badge do deck (à direita). */
+.ab-card-img-badge.ab-card-img-badge-side {
+  right: auto;
+  left: 6px;
+  background: var(--blue, #3b82f6);
+}
+.ab-sidebar-title-spaced { margin-top: 22px; }
+.ab-sidebar-note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted, #8b8f99);
+  margin: 4px 0 8px;
+}

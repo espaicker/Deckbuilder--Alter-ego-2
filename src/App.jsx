@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import CARD_DATA from "./data/modelo_cartas.json";
 import "./App.css";
-import { DECK_RULES, attackDefenseAverages, colorBreakdown, colorsSubset, costCurve, countEntries, createCardIndex, createExportText, normalizeBuild, normalizeSavedDeckIndex, typeSubtypeBreakdown, validateDeck } from "./lib/deckRules.js";
+import { DECK_RULES, attackDefenseAverages, colorBreakdown, colorsSubset, combinedCopies, costCurve, countEntries, createCardIndex, createExportText, normalizeBuild, normalizeSavedDeckIndex, standardDropPile, typeSubtypeBreakdown, validateDeck } from "./lib/deckRules.js";
 import { storage, safeJsonParse } from "./lib/storage.js";
 import { escapeHtml, escapeRegExp, safeCardImagePath, truncateString } from "./lib/sanitize.js";
 import { COLOR_HEX, SUBTYPE_COLORS, DROP_IMAGE_ID, MAX_DECK_NAME_LENGTH } from "./lib/constants.js";
@@ -13,7 +13,19 @@ import AdminPanel from "./components/AdminPanel.jsx";
 import LegalPage from "./components/LegalPage.jsx";
 import AnalyticsPanel from "./components/AnalyticsPanel.jsx";
 
-const { mainDeckSize: MAIN_DECK_SIZE, dropPileSize: DROP_PILE_SIZE, maxCopies: MAX_COPIES } = DECK_RULES;
+const { mainDeckSize: MAIN_DECK_SIZE, sideboardMaxSize: SIDEBOARD_MAX, dropsPerColor: DROPS_PER_COLOR, maxCopies: MAX_COPIES } = DECK_RULES;
+
+function groupByType(entries, cardIndex) {
+  const groups = {};
+  Object.entries(entries).forEach(([id, qty]) => {
+    const card = cardIndex.get(id);
+    if (!card) return;
+    if (!groups[card.type]) groups[card.type] = [];
+    groups[card.type].push({ card, qty });
+  });
+  Object.values(groups).forEach((arr) => arr.sort((a, b) => a.card.name.localeCompare(b.card.name)));
+  return groups;
+}
 
 
 
@@ -244,7 +256,8 @@ export default function DeckBuilder() {
     if (path === "/privacidade") return "privacidade";
     if (path === "/termos") return "termos";
     if (path === "/deck/montar") return "deck";
-    if (path === "/deck/drops") return "drops";
+    // /deck/drops existia quando os Drops eram escolhidos; links antigos vão pro resumo.
+    if (path === "/deck/drops") return "resumo";
     if (path === "/deck/resumo") return "resumo";
     if (path === "/deck/alterego" || path === "/deck" || path.startsWith("/deck")) return "alterego";
     if (path === "/catalogo") return "catalogo";
@@ -258,7 +271,6 @@ export default function DeckBuilder() {
       case "inicio": return "/";
       case "alterego": return "/deck/alterego";
       case "deck": return "/deck/montar";
-      case "drops": return "/deck/drops";
       case "resumo": return "/deck/resumo";
       case "catalogo": return "/catalogo";
       case "comunidade": return "/comunidade";
@@ -287,7 +299,9 @@ export default function DeckBuilder() {
   }, [location.pathname, getTabFromPath]);
   const [alterEgoId, setAlterEgoId] = useState(null);
   const [mainDeck, setMainDeck] = useState({});
-  const [dropPile, setDropPile] = useState({});
+  const [sideboard, setSideboard] = useState({});
+  // Para onde vão as cartas clicadas na tela de montagem: "main" ou "side".
+  const [addTarget, setAddTarget] = useState("main");
   const [filterType, setFilterType] = useState("Todos");
   const [filterSubtype, setFilterSubtype] = useState("Todos");
   const [filterColor, setFilterColor] = useState("Todas");
@@ -345,10 +359,13 @@ export default function DeckBuilder() {
     () => countEntries(mainDeck),
     [mainDeck]
   );
-  const dropCount = useMemo(
-    () => countEntries(dropPile),
-    [dropPile]
+  const sideboardCount = useMemo(
+    () => countEntries(sideboard),
+    [sideboard]
   );
+  // Drops não são escolhidos: sempre 10 de cada cor do Alter Ego.
+  const dropPile = useMemo(() => standardDropPile(alterEgo), [alterEgo]);
+  const dropCount = useMemo(() => countEntries(dropPile), [dropPile]);
 
   function flashToast(msg) {
     setToast(msg);
@@ -358,51 +375,35 @@ export default function DeckBuilder() {
   function chooseAlterEgo(id) {
     setAlterEgoId(id);
     setMainDeck({});
-    setDropPile({});
+    setSideboard({});
+    setAddTarget("main");
     setFilterType("Todos");
     setFilterSubtype("Todos");
     setFilterColor("Todas");
     setTab("deck");
   }
 
-  function addCard(card) {
-    setMainDeck((prev) => {
-      const cur = prev[card.id] || 0;
-      if (cur >= MAX_COPIES) {
-        flashToast(`Máximo de ${MAX_COPIES} cópias de "${card.name}".`);
-        return prev;
-      }
-      return { ...prev, [card.id]: cur + 1 };
-    });
+  // O limite de cópias vale para deck + sideboard somados.
+  function addCard(card, target = addTarget) {
+    if (combinedCopies(mainDeck, sideboard, card.id) >= MAX_COPIES) {
+      flashToast(`Máximo de ${MAX_COPIES} cópias de "${card.name}" (deck + sideboard).`);
+      return;
+    }
+    if (target === "side" && sideboardCount >= SIDEBOARD_MAX) {
+      flashToast(`O sideboard já tem ${SIDEBOARD_MAX} cartas.`);
+      return;
+    }
+    const setter = target === "side" ? setSideboard : setMainDeck;
+    setter((prev) => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }));
   }
 
-  function removeCard(cardId) {
-    setMainDeck((prev) => {
+  function removeCard(cardId, target = addTarget) {
+    const setter = target === "side" ? setSideboard : setMainDeck;
+    setter((prev) => {
       const cur = prev[cardId] || 0;
       if (cur <= 0) return prev;
       const next = { ...prev, [cardId]: cur - 1 };
       if (next[cardId] === 0) delete next[cardId];
-      return next;
-    });
-  }
-
-  function addDrop(color) {
-    setDropPile((prev) => {
-      if (countEntries(prev) >= DROP_PILE_SIZE) {
-        flashToast(`O monte de Drops já tem ${DROP_PILE_SIZE}.`);
-        return prev;
-      }
-      const cur = prev[color] || 0;
-      return { ...prev, [color]: cur + 1 };
-    });
-  }
-
-  function removeDrop(color) {
-    setDropPile((prev) => {
-      const cur = prev[color] || 0;
-      if (cur <= 0) return prev;
-      const next = { ...prev, [color]: cur - 1 };
-      if (next[color] === 0) delete next[color];
       return next;
     });
   }
@@ -423,10 +424,10 @@ export default function DeckBuilder() {
         if (res && res.value) {
           const parsed = safeJsonParse(res.value);
           if (parsed) {
-            const build = normalizeBuild(parsed, cardIndex, CARD_DATA.colors);
+            const build = normalizeBuild(parsed, cardIndex);
             setAlterEgoId(build.alterEgoId);
             setMainDeck(build.mainDeck);
-            setDropPile(build.dropPile);
+            setSideboard(build.sideboard);
           }
         }
       } catch (e) {
@@ -451,11 +452,11 @@ export default function DeckBuilder() {
 
   useEffect(() => {
     if (!ready) return;
-    const payload = JSON.stringify({ alterEgoId, mainDeck, dropPile });
+    const payload = JSON.stringify({ alterEgoId, mainDeck, sideboard });
     storage.set("current_build", payload).catch((e) => {
       console.warn("[storage] Falha ao salvar build:", e?.message);
     });
-  }, [alterEgoId, mainDeck, dropPile, ready]);
+  }, [alterEgoId, mainDeck, sideboard, ready]);
 
   async function saveNamedDeck() {
     if (!alterEgo) {
@@ -466,7 +467,7 @@ export default function DeckBuilder() {
     const name = truncateString(rawName, MAX_DECK_NAME_LENGTH) ||
       `${alterEgo.name} — ${new Date().toLocaleDateString("pt-BR")}`;
     const key = `deck:${Date.now()}`;
-    const record = { key, name, alterEgoId, mainDeck, dropPile, savedAt: Date.now() };
+    const record = { key, name, alterEgoId, mainDeck, sideboard, savedAt: Date.now() };
     try {
       await storage.set(key, JSON.stringify(record));
       const newIndex = [...savedDecks, { key, name, savedAt: record.savedAt }];
@@ -485,11 +486,11 @@ export default function DeckBuilder() {
       if (res && res.value) {
         const record = safeJsonParse(res.value);
         if (!record) throw new Error("Dados corrompidos");
-        const build = normalizeBuild(record, cardIndex, CARD_DATA.colors);
+        const build = normalizeBuild(record, cardIndex);
         if (!build.alterEgoId) throw new Error("Deck salvo inválido");
         setAlterEgoId(build.alterEgoId);
         setMainDeck(build.mainDeck);
-        setDropPile(build.dropPile);
+        setSideboard(build.sideboard);
         setTab("deck");
         flashToast(`"${truncateString(record.name || "", 40)}" carregado.`);
       }
@@ -516,30 +517,19 @@ export default function DeckBuilder() {
   }
 
   const issues = useMemo(
-    () => validateDeck({ alterEgo, mainDeck, dropPile, cardIndex }),
-    [alterEgo, mainDeck, dropPile, cardIndex]
+    () => validateDeck({ alterEgo, mainDeck, sideboard, cardIndex }),
+    [alterEgo, mainDeck, sideboard, cardIndex]
   );
 
   const isLegal = issues.length === 0;
 
-  const deckByType = useMemo(() => {
-    const groups = {};
-    Object.entries(mainDeck).forEach(([id, qty]) => {
-      const card = cardIndex.get(id);
-      if (!card) return;
-      const key = card.type;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push({ card, qty });
-    });
-    Object.values(groups).forEach((arr) =>
-      arr.sort((a, b) => a.card.name.localeCompare(b.card.name))
-    );
-    return groups;
-  }, [mainDeck, cardIndex]);
+  const deckByType = useMemo(() => groupByType(mainDeck, cardIndex), [mainDeck, cardIndex]);
+  const sideboardByType = useMemo(() => groupByType(sideboard, cardIndex), [sideboard, cardIndex]);
+  const sideboardColorStats = useMemo(() => colorBreakdown(sideboard, {}, cardIndex), [sideboard, cardIndex]);
 
   const exportText = useMemo(
-    () => createExportText({ alterEgo, mainDeck, dropPile, cardIndex }),
-    [alterEgo, mainDeck, dropPile, cardIndex]
+    () => createExportText({ alterEgo, mainDeck, sideboard, cardIndex }),
+    [alterEgo, mainDeck, sideboard, cardIndex]
   );
 
   const colorStats = useMemo(
@@ -580,13 +570,20 @@ export default function DeckBuilder() {
       .map(([id, quantity]) => ({ id, quantity, card: cardIndex.get(id) }))
       .filter((entry) => entry.card && entry.quantity > 0)
       .sort((a, b) => a.card.name.localeCompare(b.card.name));
+    const sideEntries = Object.entries(sideboard)
+      .map(([id, quantity]) => ({ id, quantity, card: cardIndex.get(id) }))
+      .filter((entry) => entry.card && entry.quantity > 0)
+      .sort((a, b) => a.card.name.localeCompare(b.card.name));
     const dropEntries = Object.entries(dropPile).filter(([, quantity]) => quantity > 0);
+    const toItems = (entries) => entries.flatMap(({ card, quantity }) =>
+      Array.from({ length: quantity }, () => ({ id: card.id, name: card.name, img: imgUrl(card.id) }))
+    );
 
+    // Fila: Alter Ego, deck, sideboard e os Drops padrão (10 de cada cor).
     const printItems = [
       { id: alterEgo.id, name: alterEgo.name, img: imgUrl(alterEgo.id) },
-      ...deckEntries.flatMap(({ card, quantity }) =>
-        Array.from({ length: quantity }, () => ({ id: card.id, name: card.name, img: imgUrl(card.id) }))
-      ),
+      ...toItems(deckEntries),
+      ...toItems(sideEntries),
       ...dropEntries.flatMap(([color, quantity]) =>
         Array.from({ length: quantity }, () => ({ id: DROP_IMAGE_ID[color], name: `Drop ${color}`, img: imgUrl(DROP_IMAGE_ID[color]) }))
       ),
@@ -649,7 +646,11 @@ export default function DeckBuilder() {
             deckEntries.map((e) => `<li><span>${e.quantity}×</span> ${escapeHtml(e.card.name)}</li>`)
           )}
           ${checklistRows(
-            `Drops (${dropCount}/${DROP_PILE_SIZE})`,
+            `Sideboard (${sideboardCount}/${SIDEBOARD_MAX})`,
+            sideEntries.map((e) => `<li><span>${e.quantity}×</span> ${escapeHtml(e.card.name)}</li>`)
+          )}
+          ${checklistRows(
+            `Drops (${dropCount})`,
             dropEntries.map(([color, quantity]) => `<li><span>${quantity}×</span> Drop ${escapeHtml(color)}</li>`)
           )}
         </div>
@@ -796,19 +797,19 @@ export default function DeckBuilder() {
             </div>
             <div
               className="ab-meter"
-              title={`Drops: ${dropCount}/${DROP_PILE_SIZE} — ${formatColorPercentages(colorStats.dropCounts, colorStats.dropTotal, CARD_DATA.colors)}`}
+              title={`Sideboard: ${sideboardCount}/${SIDEBOARD_MAX} — ${formatColorPercentages(sideboardColorStats.deckCounts, sideboardColorStats.deckTotal, CARD_DATA.colors)}`}
             >
-              <span className="ab-meter-label">DROPS</span>
+              <span className="ab-meter-label">SIDE</span>
               <div className="ab-meter-track">
                 <ColorMeterFill
-                  counts={colorStats.dropCounts}
-                  total={colorStats.dropTotal}
-                  capacity={DROP_PILE_SIZE}
+                  counts={sideboardColorStats.deckCounts}
+                  total={sideboardColorStats.deckTotal}
+                  capacity={SIDEBOARD_MAX}
                   colorOrder={CARD_DATA.colors}
                 />
               </div>
-              <span className="ab-meter-value">
-                {dropCount}/{DROP_PILE_SIZE}
+              <span className={`ab-meter-value ${sideboardCount > SIDEBOARD_MAX ? "is-over" : ""}`}>
+                {sideboardCount}/{SIDEBOARD_MAX}
               </span>
             </div>
           </div>
@@ -822,7 +823,7 @@ export default function DeckBuilder() {
           ].map(([key, label]) => (
             <button
               key={key}
-              className={`ab-tab ${tab === key || (key === "construcao" && ["alterego", "deck", "drops", "resumo"].includes(tab)) ? "is-active" : ""}`}
+              className={`ab-tab ${tab === key || (key === "construcao" && ["alterego", "deck", "resumo"].includes(tab)) ? "is-active" : ""}`}
               onClick={() => setTab(key === "construcao" ? "alterego" : key)}
             >
               {label}
@@ -838,13 +839,12 @@ export default function DeckBuilder() {
           )}
         </nav>
 
-        {["alterego", "deck", "drops", "resumo"].includes(tab) && (
+        {["alterego", "deck", "resumo"].includes(tab) && (
           <nav className="ab-subtabs">
             {[
               ["alterego", "1 · Alter Ego"],
-              ["deck", "2 · Deck"],
-              ["drops", "3 · Drops"],
-              ["resumo", "4 · Resumo"],
+              ["deck", "2 · Deck e Sideboard"],
+              ["resumo", "3 · Resumo"],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -1120,33 +1120,58 @@ export default function DeckBuilder() {
                 )}
               </div>
 
+              <div className="ab-add-target" role="group" aria-label="Adicionar cartas em">
+                <span className="ab-add-target-label">Adicionar em:</span>
+                <button
+                  className={`ab-chip ${addTarget === "main" ? "is-active" : ""}`}
+                  onClick={() => setAddTarget("main")}
+                  aria-pressed={addTarget === "main"}
+                >
+                  Deck principal ({mainDeckCount}/{MAIN_DECK_SIZE})
+                </button>
+                <button
+                  className={`ab-chip ${addTarget === "side" ? "is-active" : ""}`}
+                  onClick={() => setAddTarget("side")}
+                  aria-pressed={addTarget === "side"}
+                >
+                  Sideboard ({sideboardCount}/{SIDEBOARD_MAX})
+                </button>
+              </div>
+
               <div className="ab-card-img-grid">
                 {filteredPool.length === 0 && (
                   <div className="ab-empty">Nenhuma carta encontrada com esse filtro.</div>
                 )}
                 {filteredPool.map((card) => {
-                  const qty = mainDeck[card.id] || 0;
+                  const mainQty = mainDeck[card.id] || 0;
+                  const sideQty = sideboard[card.id] || 0;
+                  const targetQty = addTarget === "side" ? sideQty : mainQty;
+                  const atCopyLimit = mainQty + sideQty >= MAX_COPIES;
+                  const sideFull = addTarget === "side" && sideboardCount >= SIDEBOARD_MAX;
                   return (
-                    <div key={card.id} className={`ab-card-img-item ${qty > 0 ? "has-qty" : ""}`}>
+                    <div key={card.id} className={`ab-card-img-item ${mainQty + sideQty > 0 ? "has-qty" : ""}`}>
                       <div
                         className="ab-card-img-wrap"
                         style={{ "--edge": COLOR_HEX[card.colors[0]] }}
                         onClick={() => setPreviewCard(card)}
                       >
                         <CardArt id={card.id} className="ab-card-img-full" />
-                        {qty > 0 && <span className="ab-card-img-badge">×{qty}</span>}
+                        {mainQty > 0 && <span className="ab-card-img-badge" title="No deck principal">×{mainQty}</span>}
+                        {sideQty > 0 && <span className="ab-card-img-badge ab-card-img-badge-side" title="No sideboard">S{sideQty}</span>}
                         <div className="ab-card-img-overlay">
                           <button
                             className="ab-overlay-btn ab-overlay-minus"
                             onClick={(e) => { e.stopPropagation(); removeCard(card.id); }}
-                            disabled={qty === 0}
+                            disabled={targetQty === 0}
+                            aria-label={`Remover ${card.name} do ${addTarget === "side" ? "sideboard" : "deck"}`}
                           >
                             −
                           </button>
                           <button
                             className="ab-overlay-btn ab-overlay-plus"
                             onClick={(e) => { e.stopPropagation(); addCard(card); }}
-                            disabled={qty >= MAX_COPIES}
+                            disabled={atCopyLimit || sideFull}
+                            aria-label={`Adicionar ${card.name} ao ${addTarget === "side" ? "sideboard" : "deck"}`}
                           >
                             +
                           </button>
@@ -1183,7 +1208,7 @@ export default function DeckBuilder() {
                         />
                         <span className="ab-sidebar-name">{card.name}</span>
                         <span className="ab-sidebar-qty">×{qty}</span>
-                        <button className="ab-sidebar-remove" onClick={() => removeCard(card.id)}>
+                        <button className="ab-sidebar-remove" onClick={() => removeCard(card.id, "main")} aria-label={`Remover ${card.name} do deck`}>
                           −
                         </button>
                       </div>
@@ -1191,47 +1216,44 @@ export default function DeckBuilder() {
                   </div>
                 ) : null
               )}
-            </aside>
-          </section>
-        )}
 
-        {tab === "drops" && !alterEgo && (
-          <EmptyGuard onGo={() => setTab("alterego")} />
-        )}
+              <div className="ab-sidebar-title ab-sidebar-title-spaced">Sideboard</div>
+              <div className={`ab-sidebar-count ${sideboardCount > SIDEBOARD_MAX ? "is-over" : ""}`}>
+                {sideboardCount} / {SIDEBOARD_MAX}
+              </div>
+              {sideboardCount === 0 && (
+                <div className="ab-empty">Opcional. Escolha “Sideboard” acima para adicionar até {SIDEBOARD_MAX} cartas de troca.</div>
+              )}
+              {["Ação", "Reação", "Tática"].map((type) =>
+                sideboardByType[type] ? (
+                  <div key={type} className="ab-sidebar-group">
+                    <div className="ab-sidebar-group-title">{type}</div>
+                    {sideboardByType[type].map(({ card, qty }) => (
+                      <div key={card.id} className="ab-sidebar-row">
+                        <span className="ab-sidebar-dot" style={{ background: COLOR_HEX[card.colors[0]] }} />
+                        <span className="ab-sidebar-name">{card.name}</span>
+                        <span className="ab-sidebar-qty">×{qty}</span>
+                        <button className="ab-sidebar-remove" onClick={() => removeCard(card.id, "side")} aria-label={`Remover ${card.name} do sideboard`}>
+                          −
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null
+              )}
 
-        {tab === "drops" && alterEgo && (
-          <section className="ab-section">
-            <h1 className="ab-section-title">Monte de Drops</h1>
-            <p className="ab-section-sub">
-              Sua fonte de energia. Só cores do seu Alter Ego — total fixo de {DROP_PILE_SIZE}.
-            </p>
-            <div className="ab-drop-grid">
-              {allowedColors.map((color) => (
-                <div key={color} className="ab-drop-card" style={{ "--c": COLOR_HEX[color] }}>
-                  <div className="ab-drop-icon">
-                    <AtomIcon size={30} color={COLOR_HEX[color]} />
-                  </div>
-                  <div className="ab-drop-name">{color}</div>
-                  <div className="ab-card-controls">
-                    <button
-                      className="ab-stepper-btn"
-                      onClick={() => removeDrop(color)}
-                      disabled={(dropPile[color] || 0) === 0}
-                    >
-                      −
-                    </button>
-                    <span className="ab-stepper-qty">{dropPile[color] || 0}</span>
-                    <button
-                      className="ab-stepper-btn"
-                      onClick={() => addDrop(color)}
-                      disabled={dropCount >= DROP_PILE_SIZE}
-                    >
-                      +
-                    </button>
-                  </div>
+              <div className="ab-sidebar-title ab-sidebar-title-spaced">Drops</div>
+              <p className="ab-sidebar-note">
+                Fixo: {DROPS_PER_COLOR} de cada cor do Alter Ego. Você monta a combinação na hora da partida.
+              </p>
+              {Object.entries(dropPile).map(([color, qty]) => (
+                <div key={color} className="ab-sidebar-row">
+                  <span className="ab-sidebar-dot" style={{ background: COLOR_HEX[color] }} />
+                  <span className="ab-sidebar-name">Drop {color}</span>
+                  <span className="ab-sidebar-qty">×{qty}</span>
                 </div>
               ))}
-            </div>
+            </aside>
           </section>
         )}
 
@@ -1255,7 +1277,8 @@ export default function DeckBuilder() {
                 <div className="ab-sidebar-group-title">Distribuição de cores</div>
                 {[
                   { label: "Deck", counts: colorStats.deckCounts, total: colorStats.deckTotal },
-                  { label: "Drops", counts: colorStats.dropCounts, total: colorStats.dropTotal },
+                  { label: "Sideboard", counts: sideboardColorStats.deckCounts, total: sideboardColorStats.deckTotal },
+                  { label: "Drops (fixo)", counts: colorStats.dropCounts, total: colorStats.dropTotal },
                 ].map(({ label, counts, total }) => (
                   <div key={label} className="ab-color-breakdown-row">
                     <span className="ab-color-breakdown-label">{label}</span>
@@ -1389,7 +1412,7 @@ export default function DeckBuilder() {
             user={user}
             alterEgo={alterEgo}
             mainDeck={mainDeck}
-            dropPile={dropPile}
+            sideboard={sideboard}
             flashToast={flashToast}
             onRequestLogin={() => setShowAuthModal(true)}
           />

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { api } from "../lib/api.js";
 import { COLOR_HEX } from "../lib/constants.js";
-import { countEntries, createCardIndex, colorBreakdown, costCurve, attackDefenseAverages } from "../lib/deckRules.js";
+import { DECK_RULES, countEntries, createCardIndex, colorBreakdown, costCurve, attackDefenseAverages, standardDropPile } from "../lib/deckRules.js";
 import CARD_DATA from "../data/modelo_cartas.json";
 
 const cardIndex = createCardIndex(CARD_DATA.cards);
@@ -21,7 +21,7 @@ function DeckColorDots({ alterEgoId }) {
 function DeckCard({ deck, onSelect, isSelected, onCompare, user }) {
   const ae = cardIndex.get(deck.alter_ego_id);
   const mainCount = countEntries(deck.main_deck || {});
-  const dropCount = countEntries(deck.drop_pile || {});
+  const sideCount = countEntries(deck.sideboard || {});
 
   return (
     <div className={`ab-community-card ${isSelected ? "is-selected" : ""}`}>
@@ -32,7 +32,7 @@ function DeckCard({ deck, onSelect, isSelected, onCompare, user }) {
       <div className="ab-community-card-name">{deck.name}</div>
       <div className="ab-community-card-meta">
         <span>{ae?.name || deck.alter_ego_id}</span>
-        <span>{mainCount} cartas · {dropCount} drops</span>
+        <span>{mainCount} cartas · side {sideCount}</span>
       </div>
       {deck.description && (
         <p className="ab-community-card-desc">{deck.description}</p>
@@ -49,27 +49,49 @@ function DeckCard({ deck, onSelect, isSelected, onCompare, user }) {
   );
 }
 
-function DeckDetails({ deck, onClose, onCompare }) {
-  const ae = cardIndex.get(deck.alter_ego_id);
-  const mainDeck = deck.main_deck || {};
-  const dropPile = deck.drop_pile || {};
-  const mainCount = countEntries(mainDeck);
-  const dropCount = countEntries(dropPile);
-  const colors = colorBreakdown(mainDeck, dropPile, cardIndex);
-  const cost = costCurve(mainDeck, cardIndex);
-  const combat = attackDefenseAverages(mainDeck, cardIndex);
-
-  // Agrupa cartas por tipo
+function groupByType(entries) {
   const groups = {};
-  Object.entries(mainDeck).forEach(([id, qty]) => {
+  Object.entries(entries).forEach(([id, qty]) => {
     const card = cardIndex.get(id);
     if (!card) return;
     if (!groups[card.type]) groups[card.type] = [];
     groups[card.type].push({ card, qty });
   });
-  Object.values(groups).forEach((arr) =>
-    arr.sort((a, b) => a.card.name.localeCompare(b.card.name))
+  Object.values(groups).forEach((arr) => arr.sort((a, b) => a.card.name.localeCompare(b.card.name)));
+  return groups;
+}
+
+function CardGroups({ groups }) {
+  return ["Ação", "Reação", "Tática"].map((type) =>
+    groups[type] ? (
+      <div key={type} className="ab-sidebar-group">
+        <div className="ab-sidebar-group-title">{type}</div>
+        {groups[type].map(({ card, qty }) => (
+          <div key={card.id} className="ab-sidebar-row">
+            <span className="ab-sidebar-dot" style={{ background: COLOR_HEX[card.colors[0]] }} />
+            <span className="ab-sidebar-name">{card.name}</span>
+            <span className="ab-sidebar-qty">×{qty}</span>
+          </div>
+        ))}
+      </div>
+    ) : null
   );
+}
+
+function DeckDetails({ deck, onClose, onCompare }) {
+  const ae = cardIndex.get(deck.alter_ego_id);
+  const mainDeck = deck.main_deck || {};
+  const sideboard = deck.sideboard || {};
+  // Drops são sempre o padrão do Alter Ego (10 de cada cor).
+  const dropPile = ae ? standardDropPile(ae) : deck.drop_pile || {};
+  const mainCount = countEntries(mainDeck);
+  const sideCount = countEntries(sideboard);
+  const dropCount = countEntries(dropPile);
+  const cost = costCurve(mainDeck, cardIndex);
+  const combat = attackDefenseAverages(mainDeck, cardIndex);
+
+  const groups = groupByType(mainDeck);
+  const sideGroups = groupByType(sideboard);
 
   return (
     <div className="ab-community-detail">
@@ -81,8 +103,9 @@ function DeckDetails({ deck, onClose, onCompare }) {
       </div>
       <div className="ab-community-detail-meta">
         <span>Alter Ego: <strong>{ae?.name || deck.alter_ego_id}</strong></span>
-        <span>Deck: {mainCount}/50</span>
-        <span>Drops: {dropCount}/10</span>
+        <span>Deck: {mainCount}/{DECK_RULES.mainDeckSize}</span>
+        <span>Sideboard: {sideCount}/{DECK_RULES.sideboardMaxSize}</span>
+        <span>Drops: {dropCount} (fixo)</span>
       </div>
       {deck.description && <p className="ab-community-card-desc">{deck.description}</p>}
 
@@ -101,19 +124,13 @@ function DeckDetails({ deck, onClose, onCompare }) {
         </div>
       </div>
 
-      {["Ação", "Reação", "Tática"].map((type) =>
-        groups[type] ? (
-          <div key={type} className="ab-sidebar-group">
-            <div className="ab-sidebar-group-title">{type}</div>
-            {groups[type].map(({ card, qty }) => (
-              <div key={card.id} className="ab-sidebar-row">
-                <span className="ab-sidebar-dot" style={{ background: COLOR_HEX[card.colors[0]] }} />
-                <span className="ab-sidebar-name">{card.name}</span>
-                <span className="ab-sidebar-qty">×{qty}</span>
-              </div>
-            ))}
-          </div>
-        ) : null
+      <CardGroups groups={groups} />
+
+      {sideCount > 0 && (
+        <div className="ab-community-detail-side">
+          <div className="ab-sidebar-title ab-sidebar-title-spaced">Sideboard ({sideCount})</div>
+          <CardGroups groups={sideGroups} />
+        </div>
       )}
 
       <div className="ab-community-detail-drops">
@@ -143,7 +160,7 @@ function CompareView({ deckA, deckB, onClose, allDecks }) {
     const dp = deckA.drop_pile || {};
     return {
       mainCount: countEntries(md),
-      dropCount: countEntries(dp),
+      sideCount: countEntries(deckA.sideboard || {}),
       colors: colorBreakdown(md, dp, cardIndex),
       cost: costCurve(md, cardIndex),
       combat: attackDefenseAverages(md, cardIndex),
@@ -157,7 +174,7 @@ function CompareView({ deckA, deckB, onClose, allDecks }) {
     const dp = selectedB.drop_pile || {};
     return {
       mainCount: countEntries(md),
-      dropCount: countEntries(dp),
+      sideCount: countEntries(selectedB.sideboard || {}),
       colors: colorBreakdown(md, dp, cardIndex),
       cost: costCurve(md, cardIndex),
       combat: attackDefenseAverages(md, cardIndex),
@@ -209,7 +226,7 @@ function CompareView({ deckA, deckB, onClose, allDecks }) {
 
           <CompareRow label="Alter Ego" a={statsA.ae?.name || "?"} b={statsB.ae?.name || "?"} />
           <CompareRow label="Cartas" a={statsA.mainCount} b={statsB.mainCount} />
-          <CompareRow label="Drops" a={statsA.dropCount} b={statsB.dropCount} />
+          <CompareRow label="Sideboard" a={statsA.sideCount} b={statsB.sideCount} />
           <CompareRow
             label="ATQ médio"
             a={statsA.combat.avgAttack?.toFixed(1) || "—"}
@@ -266,7 +283,7 @@ function CompareRow({ label, a, b, highlight }) {
   );
 }
 
-function PublishForm({ alterEgo, mainDeck, dropPile, onPublish, onCancel }) {
+function PublishForm({ alterEgo, mainDeck, sideboard, onPublish, onCancel }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -284,7 +301,7 @@ function PublishForm({ alterEgo, mainDeck, dropPile, onPublish, onCancel }) {
         name: name.trim() || `${alterEgo.name} — ${new Date().toLocaleDateString("pt-BR")}`,
         alter_ego_id: alterEgo.id,
         main_deck: mainDeck,
-        drop_pile: dropPile,
+        sideboard: sideboard || {},
         description: description.trim(),
       });
     } catch (err) {
@@ -337,7 +354,7 @@ function PublishForm({ alterEgo, mainDeck, dropPile, onPublish, onCancel }) {
   );
 }
 
-export default function CommunityTab({ user, alterEgo, mainDeck, dropPile, flashToast, onRequestLogin }) {
+export default function CommunityTab({ user, alterEgo, mainDeck, sideboard, flashToast, onRequestLogin }) {
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("list"); // list | detail | compare | publish
@@ -428,7 +445,7 @@ export default function CommunityTab({ user, alterEgo, mainDeck, dropPile, flash
         <PublishForm
           alterEgo={alterEgo ? cardIndex.get(alterEgo.id || alterEgo) : null}
           mainDeck={mainDeck}
-          dropPile={dropPile}
+          sideboard={sideboard}
           onPublish={handlePublish}
           onCancel={() => setView("list")}
         />

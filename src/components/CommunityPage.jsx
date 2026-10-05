@@ -16,7 +16,7 @@ const SUBTABS = [
   ["lojas", "Lojas"],
 ];
 
-export default function CommunityPage({ user, alterEgo, mainDeck, dropPile, flashToast, onRequestLogin }) {
+export default function CommunityPage({ user, alterEgo, mainDeck, sideboard, flashToast, onRequestLogin }) {
   const [subtab, setSubtab] = useState("decklists");
   const [viewingProfile, setViewingProfile] = useState(null);
 
@@ -57,7 +57,7 @@ export default function CommunityPage({ user, alterEgo, mainDeck, dropPile, flas
             user={user}
             alterEgo={alterEgo}
             mainDeck={mainDeck}
-            dropPile={dropPile}
+            sideboard={sideboard}
             flashToast={flashToast}
             onRequestLogin={onRequestLogin}
           />

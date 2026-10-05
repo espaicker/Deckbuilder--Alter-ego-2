@@ -116,7 +116,7 @@ router.get("/decks", requireAdmin, (req, res) => {
   try {
     const decks = req.db.prepare(`
       SELECT
-        d.id, d.name, d.alter_ego_id, d.main_deck, d.drop_pile,
+        d.id, d.name, d.alter_ego_id, d.main_deck, d.sideboard, d.drop_pile,
         d.description, d.created_at, d.user_id,
         u.username AS author
       FROM community_decks d
@@ -127,6 +127,7 @@ router.get("/decks", requireAdmin, (req, res) => {
     const parsed = decks.map((d) => ({
       ...d,
       main_deck: JSON.parse(d.main_deck),
+      sideboard: JSON.parse(d.sideboard || "{}"),
       drop_pile: JSON.parse(d.drop_pile),
     }));
 

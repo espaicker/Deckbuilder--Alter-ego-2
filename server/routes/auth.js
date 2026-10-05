@@ -223,7 +223,7 @@ router.get("/me/export", requireAuth, (req, res) => {
     if (!user) return res.status(404).json({ error: "Usuario nao encontrado." });
 
     const decks = req.db.prepare(
-      "SELECT id, name, alter_ego_id, main_deck, drop_pile, description, created_at FROM community_decks WHERE user_id = ?"
+      "SELECT id, name, alter_ego_id, main_deck, sideboard, drop_pile, description, created_at FROM community_decks WHERE user_id = ?"
     ).all(userId);
 
     const tournamentRegistrations = req.db.prepare(

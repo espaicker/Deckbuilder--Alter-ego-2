@@ -292,6 +292,14 @@ export async function initDb() {
     }
   } catch (e) { /* ignore */ }
 
+  // Migration: sideboard (ate 15 cartas extras) em decks publicados
+  try {
+    const cols = wrapper.prepare("PRAGMA table_info(community_decks)").all();
+    if (!cols.some((col) => col.name === "sideboard")) {
+      wrapper.exec("ALTER TABLE community_decks ADD COLUMN sideboard TEXT NOT NULL DEFAULT '{}'");
+    }
+  } catch (e) { /* ignore */ }
+
   // Migration: add terms_accepted_at (LGPD - evidencia de consentimento, Fase 9)
   try {
     const cols = wrapper.prepare("PRAGMA table_info(users)").all();

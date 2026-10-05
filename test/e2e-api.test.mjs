@@ -96,7 +96,10 @@ const DECK_BURNOUT = {
     "RED-0001": 4, "REE-0001": 4, "REA-0001": 2, "TAB-0001": 4,
     "TAS-0001": 4
   },
+  // Enviado de propósito: o servidor deve ignorar e gravar o monte padrão.
   drop_pile: { "Vermelho": 7, "Verde": 3 },
+  // REA-0001 tem 2 no deck principal; +2 no sideboard = 4 (no limite).
+  sideboard: { "REA-0001": 2 },
   description: "Deck agressivo focado em dano direto com Burnout.",
 };
 
@@ -311,11 +314,35 @@ test("E2E API - Full integration test", async (t) => {
     assert.match(data.error, /Alter Ego inválido/);
   });
 
-  await t.test("Publish rejects wrong drop pile size", async () => {
-    const wrongDrops = { ...DECK_BURNOUT, drop_pile: { Vermelho: 2 } }; // só 2 de 10
-    const { status, data } = await req("POST", "/api/decks", wrongDrops, tokenA);
+  // === SIDEBOARD ===
+
+  await t.test("Publish rejects sideboard over 15 cards", async () => {
+    // Cartas do próprio Burnout que ainda cabem no limite de cópias não bastam
+    // para 16; o servidor deve acusar o tamanho do sideboard.
+    const bigSide = { ...DECK_BURNOUT, sideboard: { "REA-0001": 2, "ACO-0010": 14 } };
+    const { status, data } = await req("POST", "/api/decks", bigSide, tokenA);
     assert.equal(status, 400);
-    assert.ok(data.issues.some((issue) => issue.includes("Monte de Drops")));
+    assert.ok(data.issues.some((issue) => issue.includes("Sideboard: 16/15")));
+  });
+
+  await t.test("Publish rejects copies over 4 counting deck + sideboard", async () => {
+    // REA-0001 já tem 2 no deck principal; +3 no sideboard = 5
+    const overCopies = { ...DECK_BURNOUT, sideboard: { "REA-0001": 3 } };
+    const { status, data } = await req("POST", "/api/decks", overCopies, tokenA);
+    assert.equal(status, 400);
+    assert.ok(data.issues.some((issue) => issue.includes("(deck + sideboard)")));
+  });
+
+  await t.test("Publish rejects sideboard card outside Alter Ego colors", async () => {
+    const wrongColorSide = { ...DECK_BURNOUT, sideboard: { "ACO-0010": 1 } }; // Amarelo
+    const { status, data } = await req("POST", "/api/decks", wrongColorSide, tokenA);
+    assert.equal(status, 400);
+    assert.ok(data.issues.some((issue) => issue.includes("cores não permitidas")));
+  });
+
+  await t.test("Publish rejects malformed sideboard", async () => {
+    const { status } = await req("POST", "/api/decks", { ...DECK_BURNOUT, sideboard: ["REA-0001"] }, tokenA);
+    assert.equal(status, 400);
   });
 
   // === LIST COMMUNITY ===
@@ -342,7 +369,16 @@ test("E2E API - Full integration test", async (t) => {
     assert.equal(data.name, "Burnout Aggro");
     assert.equal(data.alter_ego_id, "AE-0001");
     assert.equal(data.author, "JogadorA");
-    assert.deepEqual(data.drop_pile, { Vermelho: 7, Verde: 3 });
+    // Drops enviados pelo cliente ({Vermelho:7, Verde:3}) são ignorados:
+    // o servidor sempre grava 10 de cada cor do Alter Ego.
+    assert.deepEqual(data.drop_pile, { Vermelho: 10, Verde: 10 });
+    assert.deepEqual(data.sideboard, { "REA-0001": 2 });
+  });
+
+  await t.test("Deck published without sideboard returns empty sideboard", async () => {
+    const { status, data } = await req("GET", `/api/decks/${deckIdB}`);
+    assert.equal(status, 200);
+    assert.deepEqual(data.sideboard, {});
   });
 
   await t.test("Get nonexistent deck returns 404", async () => {

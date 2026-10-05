@@ -107,6 +107,10 @@ router.get("/me", requireAuth, (req, res) => {
  */
 router.post("/", requireAuth, (req, res) => {
   try {
+    // A conta de admin (id 0) nao existe em users: o deck ficaria invisivel.
+    if (!req.user.id) {
+      return res.status(403).json({ error: "A conta de administrador não publica decks. Entre com uma conta de jogador." });
+    }
     // drop_pile do cliente é ignorado: os Drops são sempre o padrão do Alter Ego.
     const { name, alter_ego_id, main_deck, sideboard, description } = req.body || {};
 

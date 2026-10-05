@@ -72,6 +72,11 @@ export const api = {
   exportMyData: () => request("GET", "/auth/me/export"),
   deleteMyAccount: (password) => request("DELETE", "/auth/me", { password }),
 
+  // Recuperacao de senha e e-mail da conta
+  forgotPassword: (email) => request("POST", "/auth/forgot-password", { email }),
+  resetPassword: (token, newPassword) => request("POST", "/auth/reset-password", { token, newPassword }),
+  updateEmail: (email, currentPassword) => request("PATCH", "/auth/me/email", { email, currentPassword }),
+
   // Decks
   getCommunityDecks: () => request("GET", "/decks/community"),
 

@@ -145,6 +145,45 @@ function TermsContent() {
 /* ============================================================
    CONFIGURACOES DE CONTA (LGPD): exportar / apagar
    ============================================================ */
+function EmailSettings({ flashToast }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.updateEmail(email.trim(), password);
+      flashToast("E-mail atualizado.");
+      setEmail("");
+      setPassword("");
+    } catch (err) {
+      flashToast(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form className="ab-auth-form ab-account-email" onSubmit={handleSubmit}>
+      <div className="ab-sidebar-group-title">E-mail da conta</div>
+      <p className="ab-legal-p">Usado para recuperar a senha. Nunca aparece publicamente.</p>
+      <label className="ab-auth-label">
+        Novo e-mail
+        <input className="ab-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+      </label>
+      <label className="ab-auth-label">
+        Senha atual
+        <input className="ab-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+      </label>
+      <button className="ab-btn ab-btn-ghost" type="submit" disabled={saving || !email || !password}>
+        {saving ? "Salvando…" : "Atualizar e-mail"}
+      </button>
+    </form>
+  );
+}
+
 export function AccountDataSettings({ user, flashToast, onDeleted }) {
   const [exporting, setExporting] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -188,6 +227,7 @@ export function AccountDataSettings({ user, flashToast, onDeleted }) {
 
   return (
     <div className="ab-account-data">
+      <EmailSettings flashToast={flashToast} />
       <div className="ab-sidebar-group-title">Meus dados (LGPD)</div>
       <p className="ab-legal-p">
         Você tem direito de acessar e apagar seus dados pessoais a qualquer momento.

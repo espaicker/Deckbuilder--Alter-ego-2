@@ -125,8 +125,9 @@ test("E2E Perfil — segurança, sanitização e heurísticas", async (t) => {
   });
 
   await t.test("Aceita JPEG real (magic bytes FF D8 FF)", async () => {
-    // Minimal valid JPEG (just header, won't render but passes magic byte check)
-    const jpegHeader = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]);
+    // JPEG valido de 8x8 gerado pelo sharp (o servidor decodifica a imagem de verdade)
+    const { default: sharp } = await import("sharp");
+    const jpegHeader = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#c00" } }).jpeg().toBuffer();
     const boundary = "----TestBoundary789";
     const body = Buffer.concat([
       Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="avatar"; filename="real.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`),
@@ -165,10 +166,11 @@ test("E2E Perfil — segurança, sanitização e heurísticas", async (t) => {
   await t.test("Publica deck com 80%+ cartas ofensivas → estilo Agressivo", async () => {
     // Deck com maioria de cartas Ação (ofensivas)
     const aggressiveDeck = {
-      "ACO-0001": 4, "ACO-0002": 4, "ACO-0003": 4, "ACO-0004": 4,  // Ação
-      "ACO-0005": 4, "ACO-0006": 4, "ACO-0007": 4, "ACO-0008": 4,  // Ação
-      "ACO-0009": 4, "ACO-0010": 4, "ACO-0011": 4,                  // Ação
-      "REA-0001": 2, "TAB-0001": 4,                                  // Non-Ação (para chegar a 50)
+      // 12 cartas de Ação legais para o Burnout (Vermelho/Verde) x4 = 48
+      "ACO-0001": 4, "ACO-0002": 4, "ACO-0006": 4, "ACO-0007": 4,
+      "ACO-0008": 4, "ACO-0009": 4, "ACO-0017": 4, "ACO-0019": 4,
+      "ACA-0001": 4, "ACA-0002": 4, "ACE-0001": 4, "ACE-0002": 4,
+      "REA-0001": 2,                                                 // completa 50
     };
     const { status } = await req("POST", "/api/decks", {
       name: "Deck Super Agressivo",

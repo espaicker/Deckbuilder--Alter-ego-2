@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
-import { existsSync, mkdirSync, unlinkSync } from "fs";
+import { existsSync, mkdirSync, unlinkSync, readFileSync } from "fs";
 import multer from "multer";
 import sharp from "sharp";
 import { fileURLToPath } from "url";

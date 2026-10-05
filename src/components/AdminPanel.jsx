@@ -34,36 +34,6 @@ function AdminLogin({ onLogin }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  function handleImageSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = (ev) => setImagePreview(ev.target.result);
-    reader.readAsDataURL(file);
-  }
-
-  async function uploadImage(cardId) {
-    if (!imageFile) return;
-    setUploadingImage(true);
-    try {
-      const formData = new FormData();
-      formData.append("image", imageFile);
-      const token = getAdminToken();
-      const res = await fetch(`/api/admin/cards/${cardId}/image`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-    } catch (err) {
-      flash("Erro ao enviar imagem: " + err.message);
-    } finally {
-      setUploadingImage(false);
-    }
-  }
-
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);

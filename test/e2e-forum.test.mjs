@@ -115,28 +115,6 @@ test("E2E Fórum — XSS, Flood, Moderação", async (t) => {
     assert.equal(reply.body, xssReply, "Reply body deve vir exatamente como enviado");
   });
 
-  // === TESTE FLOOD: 10 requests em 2 segundos deve gerar 429 ===
-  await t.test("Rate limiting: flood de 10 posts em 2s retorna 429", async () => {
-    const results = [];
-    // Fire 10 requests concurrently
-    const promises = Array.from({ length: 10 }, (_, i) =>
-      req("POST", `/api/forum/categories/${categoryId}/topics`, {
-        title: `Flood post ${i}`,
-        body: `Corpo do flood post ${i} - testando rate limit`,
-      }, userToken)
-    );
-
-    const responses = await Promise.all(promises);
-    const statuses = responses.map(r => r.status);
-
-    const successCount = statuses.filter(s => s === 201).length;
-    const rateLimited = statuses.filter(s => s === 429).length;
-
-    // Rate limiter allows 5 per minute — so at least some should be blocked
-    assert.ok(rateLimited > 0, `Esperava pelo menos 1 request com 429, mas todos passaram: ${JSON.stringify(statuses)}`);
-    assert.ok(successCount <= 5, `No máximo 5 devem passar, mas passaram ${successCount}`);
-  });
-
   // === TESTE MODERAÇÃO: admin oculta/tranca/fixa ===
   await t.test("Admin pode trancar tópico", async () => {
     const { status, data } = await req("POST", `/api/forum/topics/${topicId}/lock`, {}, adminToken);
@@ -212,6 +190,28 @@ test("E2E Fórum — XSS, Flood, Moderação", async (t) => {
 
     const { status: hideStatus } = await req("POST", `/api/forum/topics/${t2.id}/hide`, {}, userToken);
     assert.equal(hideStatus, 403);
+  });
+
+  // === TESTE FLOOD: 10 requests em 2 segundos deve gerar 429 ===
+  await t.test("Rate limiting: flood de 10 posts em 2s retorna 429", async () => {
+    const results = [];
+    // Fire 10 requests concurrently
+    const promises = Array.from({ length: 10 }, (_, i) =>
+      req("POST", `/api/forum/categories/${categoryId}/topics`, {
+        title: `Flood post ${i}`,
+        body: `Corpo do flood post ${i} - testando rate limit`,
+      }, userToken)
+    );
+
+    const responses = await Promise.all(promises);
+    const statuses = responses.map(r => r.status);
+
+    const successCount = statuses.filter(s => s === 201).length;
+    const rateLimited = statuses.filter(s => s === 429).length;
+
+    // Rate limiter allows 5 per minute — so at least some should be blocked
+    assert.ok(rateLimited > 0, `Esperava pelo menos 1 request com 429, mas todos passaram: ${JSON.stringify(statuses)}`);
+    assert.ok(successCount <= 5, `No máximo 5 devem passar, mas passaram ${successCount}`);
   });
 
   stopServer();

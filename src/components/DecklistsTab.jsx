@@ -461,7 +461,7 @@ export default function CommunityTab({ user, alterEgo, mainDeck, sideboard, flas
       </p>
 
       <div className="ab-community-actions">
-        {user && alterEgo && (
+        {user && user.role !== "admin" && alterEgo && (
           <button className="ab-btn ab-btn-primary" onClick={() => setView("publish")}>
             Publicar meu deck
           </button>

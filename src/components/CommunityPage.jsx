@@ -16,8 +16,10 @@ const SUBTABS = [
   ["lojas", "Lojas"],
 ];
 
-export default function CommunityPage({ user, alterEgo, mainDeck, sideboard, flashToast, onRequestLogin }) {
-  const [subtab, setSubtab] = useState("decklists");
+export default function CommunityPage({ user, alterEgo, mainDeck, sideboard, flashToast, onRequestLogin, initialSubtab }) {
+  const [subtab, setSubtab] = useState(initialSubtab || "decklists");
+  // A conta de admin (id 0) nao tem perfil de jogador.
+  const subtabs = user && user.role !== "admin" ? [...SUBTABS, ["perfil", "Meu perfil"]] : SUBTABS;
   const [viewingProfile, setViewingProfile] = useState(null);
 
   if (viewingProfile) {
@@ -36,7 +38,7 @@ export default function CommunityPage({ user, alterEgo, mainDeck, sideboard, fla
   return (
     <div className="ab-community-page">
       <nav className="ab-subtabs">
-        {SUBTABS.map(([key, label]) => (
+        {subtabs.map(([key, label]) => (
           <button
             key={key}
             className={`ab-subtab ${subtab === key ? "is-active" : ""}`}
@@ -80,6 +82,15 @@ export default function CommunityPage({ user, alterEgo, mainDeck, sideboard, fla
             user={user}
             flashToast={flashToast}
             onRequestLogin={onRequestLogin}
+          />
+        )}
+
+        {subtab === "perfil" && user && (
+          <ProfilePage
+            username={user.username}
+            user={user}
+            flashToast={flashToast}
+            onBack={() => setSubtab("decklists")}
           />
         )}
 

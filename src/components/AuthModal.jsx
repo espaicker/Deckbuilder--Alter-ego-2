@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { api } from "../lib/api.js";
+
+const TITLES = { login: "Entrar", register: "Criar conta", forgot: "Recuperar senha" };
 
 /**
  * Modal de login/registro.
@@ -11,11 +14,25 @@ export default function AuthModal({ onClose, onLogin, onRegister }) {
   const [password, setPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState(null);
+  const [info, setInfo] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    setInfo(null);
+    if (mode === "forgot") {
+      setSubmitting(true);
+      try {
+        const res = await api.forgotPassword(email.trim());
+        setInfo(res.message || "Se esse e-mail existir, enviamos um link de recuperação.");
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
     if (mode === "register" && !acceptedTerms) {
       setError("Voce precisa ler e aceitar os Termos de Uso e a Politica de Privacidade.");
       return;
@@ -41,17 +58,29 @@ export default function AuthModal({ onClose, onLogin, onRegister }) {
         className="ab-auth-modal"
         role="dialog"
         aria-modal="true"
-        aria-label={mode === "login" ? "Entrar" : "Criar conta"}
+        aria-label={TITLES[mode]}
         onClick={(e) => e.stopPropagation()}
       >
         <button className="ab-modal-close" onClick={onClose} aria-label="Fechar">
           ×
         </button>
 
-        <h2 className="ab-auth-title">
-          {mode === "login" ? "Entrar" : "Criar conta"}
-        </h2>
+        <h2 className="ab-auth-title">{TITLES[mode]}</h2>
 
+        {mode === "forgot" ? (
+          <form className="ab-auth-form" onSubmit={handleSubmit}>
+            <p className="ab-auth-hint">Informe o e-mail da sua conta. Se ele existir, enviamos um link para criar uma nova senha.</p>
+            <label className="ab-auth-label">
+              E-mail
+              <input className="ab-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+            </label>
+            {error && <div className="ab-auth-error" role="alert">{error}</div>}
+            {info && <div className="ab-auth-info" role="status">{info}</div>}
+            <button className="ab-btn ab-btn-primary ab-auth-submit" type="submit" disabled={submitting}>
+              {submitting ? "Enviando…" : "Enviar link"}
+            </button>
+          </form>
+        ) : (
         <form className="ab-auth-form" onSubmit={handleSubmit}>
           <label className="ab-auth-label">
             Usuário
@@ -114,7 +143,7 @@ export default function AuthModal({ onClose, onLogin, onRegister }) {
             </label>
           )}
 
-          {error && <div className="ab-auth-error">{error}</div>}
+          {error && <div className="ab-auth-error" role="alert">{error}</div>}
 
           <button
             className="ab-btn ab-btn-primary ab-auth-submit"
@@ -128,6 +157,15 @@ export default function AuthModal({ onClose, onLogin, onRegister }) {
               : "Criar conta"}
           </button>
         </form>
+        )}
+
+        {mode === "login" && (
+          <p className="ab-auth-switch">
+            <button className="ab-link-btn" onClick={() => { setMode("forgot"); setError(null); setInfo(null); }}>
+              Esqueci minha senha
+            </button>
+          </p>
+        )}
 
         <p className="ab-auth-switch">
           {mode === "login" ? (

@@ -482,4 +482,11 @@ test("E2E API - Full integration test", async (t) => {
     const { status } = await req("GET", "/api/admin/stats", null, tokenA);
     assert.equal(status, 403);
   });
+
+  await t.test("Admin account cannot publish decks (no player profile)", async () => {
+    const login = await req("POST", "/api/admin/login", { username: "admin", password: "test-admin-password-e2e" });
+    const { status, data } = await req("POST", "/api/decks", DECK_BURNOUT, login.data.token);
+    assert.equal(status, 403);
+    assert.match(data.error, /administrador/);
+  });
 });

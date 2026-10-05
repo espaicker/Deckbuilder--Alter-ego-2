@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import CARD_DATA from "./data/modelo_cartas.json";
 import "./App.css";
@@ -11,6 +11,7 @@ import AuthModal from "./components/AuthModal.jsx";
 import CommunityPage from "./components/CommunityPage.jsx";
 import AdminPanel from "./components/AdminPanel.jsx";
 import LegalPage from "./components/LegalPage.jsx";
+import ResetPasswordPage from "./components/ResetPasswordPage.jsx";
 import AnalyticsPanel from "./components/AnalyticsPanel.jsx";
 
 const { mainDeckSize: MAIN_DECK_SIZE, sideboardMaxSize: SIDEBOARD_MAX, dropsPerColor: DROPS_PER_COLOR, maxCopies: MAX_COPIES } = DECK_RULES;
@@ -255,6 +256,7 @@ export default function DeckBuilder() {
     if (path === "/" || path === "") return "inicio";
     if (path === "/privacidade") return "privacidade";
     if (path === "/termos") return "termos";
+    if (path === "/resetar-senha") return "resetar";
     if (path === "/deck/montar") return "deck";
     // /deck/drops existia quando os Drops eram escolhidos; links antigos vão pro resumo.
     if (path === "/deck/drops") return "resumo";
@@ -367,12 +369,22 @@ export default function DeckBuilder() {
   const dropPile = useMemo(() => standardDropPile(alterEgo), [alterEgo]);
   const dropCount = useMemo(() => countEntries(dropPile), [dropPile]);
 
+  const toastTimer = useRef(null);
   function flashToast(msg) {
     setToast(msg);
-    setTimeout(() => setToast(null), 2400);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
   }
 
   function chooseAlterEgo(id) {
+    if (id === alterEgoId) {
+      setTab("deck");
+      return;
+    }
+    const hasCards = countEntries(mainDeck) + countEntries(sideboard) > 0;
+    if (hasCards && !window.confirm("Trocar de Alter Ego remove as cartas do deck e do sideboard atuais. Salve o deck antes se quiser guardá-lo. Continuar?")) {
+      return;
+    }
     setAlterEgoId(id);
     setMainDeck({});
     setSideboard({});
@@ -481,6 +493,8 @@ export default function DeckBuilder() {
   }
 
   async function loadNamedDeck(key) {
+    const hasCards = countEntries(mainDeck) + countEntries(sideboard) > 0;
+    if (hasCards && !window.confirm("Carregar este deck substitui o deck que está montado agora. Continuar?")) return;
     try {
       const res = await storage.get(key);
       if (res && res.value) {
@@ -501,6 +515,7 @@ export default function DeckBuilder() {
   }
 
   async function deleteNamedDeck(key) {
+    if (!window.confirm("Remover este deck salvo? Isso não pode ser desfeito.")) return;
     try {
       await storage.delete(key);
     } catch (e) {
@@ -735,7 +750,7 @@ export default function DeckBuilder() {
     >
       
 
-      {toast && <div className="ab-toast">{toast}</div>}
+      {toast && <div className="ab-toast" role="status" aria-live="polite">{toast}</div>}
       {previewCard && <CardPreviewModal card={previewCard} onClose={() => setPreviewCard(null)} />}
       {showAuthModal && (
         <AuthModal
@@ -767,7 +782,17 @@ export default function DeckBuilder() {
           <div className="ab-hud-auth">
             {user ? (
               <>
-                <span className="ab-hud-username">{user.username}</span>
+                {user.role === "admin" ? (
+                  <span className="ab-hud-username">{user.username}</span>
+                ) : (
+                  <button
+                    className="ab-hud-username ab-hud-username-btn"
+                    onClick={() => navigate("/comunidade/perfil")}
+                    title="Ver meu perfil e meus dados"
+                  >
+                    {user.username}
+                  </button>
+                )}
                 <button className="ab-btn ab-btn-ghost ab-btn-sm" onClick={logout}>Sair</button>
               </>
             ) : (
@@ -1409,6 +1434,8 @@ export default function DeckBuilder() {
 
         {tab === "comunidade" && (
           <CommunityPage
+            key={location.pathname}
+            initialSubtab={location.pathname === "/comunidade/perfil" ? "perfil" : undefined}
             user={user}
             alterEgo={alterEgo}
             mainDeck={mainDeck}
@@ -1428,6 +1455,14 @@ export default function DeckBuilder() {
 
         {tab === "termos" && (
           <LegalPage variant="terms" onBack={() => setTab("inicio")} />
+        )}
+
+        {tab === "resetar" && (
+          <ResetPasswordPage
+            token={new URLSearchParams(location.search).get("token")}
+            onDone={() => setTab("inicio")}
+            onRequestLogin={() => setShowAuthModal(true)}
+          />
         )}
       </main>
 

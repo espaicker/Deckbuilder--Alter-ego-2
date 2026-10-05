@@ -2560,3 +2560,30 @@
   color: var(--text-muted, #8b8f99);
   margin: 4px 0 8px;
 }
+
+/* ===== Varredura de UX ===== */
+.ab-auth-info {
+  border: 1px solid #3a7d44;
+  background: rgba(58, 125, 68, 0.15);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.ab-auth-hint { font-size: 13px; line-height: 1.4; margin: 0 0 8px; }
+.ab-hud-username-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0;
+}
+.ab-tournament-official {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b8860b;
+}
+.ab-account-email { margin-bottom: 18px; }
+.ab-reset-page { max-width: 460px; }

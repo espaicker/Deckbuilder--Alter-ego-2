@@ -164,10 +164,10 @@ function distributePoints(db, tournament) {
 router.get("/", optionalAuth, (req, res) => {
   const rows = req.db
     .prepare(
-      `SELECT t.*, u.username AS organizer_username,
+      `SELECT t.*, COALESCE(u.username, 'admin') AS organizer_username,
               (SELECT COUNT(*) FROM tournament_players tp WHERE tp.tournament_id = t.id) AS player_count
        FROM tournaments t
-       JOIN users u ON u.id = t.organizer_id
+       LEFT JOIN users u ON u.id = t.organizer_id
        ORDER BY t.created_at DESC
        LIMIT 100`
     )
@@ -246,8 +246,8 @@ router.post("/", requireAuth, (req, res) => {
 router.get("/:id", optionalAuth, (req, res) => {
   const tournament = req.db
     .prepare(
-      `SELECT t.*, u.username AS organizer_username, s.name AS store_name, s.city AS store_city, s.state AS store_state
-       FROM tournaments t JOIN users u ON u.id = t.organizer_id
+      `SELECT t.*, COALESCE(u.username, 'admin') AS organizer_username, s.name AS store_name, s.city AS store_city, s.state AS store_state
+       FROM tournaments t LEFT JOIN users u ON u.id = t.organizer_id
        LEFT JOIN stores s ON s.id = t.store_id
        WHERE t.id = ?`
     )

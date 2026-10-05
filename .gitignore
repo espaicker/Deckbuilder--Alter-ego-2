@@ -9,3 +9,6 @@ server/.admin-credentials.json
 
 server/.test-data-*/
 
+
+# Anotacoes locais de senha (nunca versionar)
+server/Senha*.txt

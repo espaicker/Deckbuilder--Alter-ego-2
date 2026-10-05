@@ -24,13 +24,14 @@ const STATUS_CLASS = {
 /* ============================================================
    CREATE TOURNAMENT FORM
    ============================================================ */
-function CreateTournamentForm({ onCreated, onCancel }) {
+function CreateTournamentForm({ user, onCreated, onCancel }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [format, setFormat] = useState("swiss");
   const [topCutSize, setTopCutSize] = useState(8);
   const [maxPlayers, setMaxPlayers] = useState("");
   const [storeId, setStoreId] = useState("");
+  const [isOfficial, setIsOfficial] = useState(false);
   const [myStores, setMyStores] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -53,6 +54,7 @@ function CreateTournamentForm({ onCreated, onCancel }) {
         top_cut_size: format === "swiss_topcut" ? topCutSize : undefined,
         max_players: maxPlayers ? parseInt(maxPlayers, 10) : undefined,
         store_id: storeId ? parseInt(storeId, 10) : undefined,
+        is_official: user?.role === "admin" ? isOfficial : undefined,
       };
       await api.createTournament(data);
       onCreated();
@@ -132,6 +134,13 @@ function CreateTournamentForm({ onCreated, onCancel }) {
           placeholder="Sem limite"
         />
       </label>
+
+      {user?.role === "admin" && (
+        <label className="ab-auth-terms">
+          <input type="checkbox" checked={isOfficial} onChange={(e) => setIsOfficial(e.target.checked)} />
+          <span>Torneio oficial (os resultados contam para o ranking)</span>
+        </label>
+      )}
 
       {myStores.length > 0 && (
         <label className="ab-field">
@@ -292,6 +301,19 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
     }
   }
 
+  async function handleToggleOfficial() {
+    setActionLoading("official");
+    try {
+      const res = await api.setTournamentRanked(tournamentId, !tournament.is_official);
+      flashToast(res.message);
+      loadTournament();
+    } catch (err) {
+      flashToast(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   async function handleOverrideResult(matchId) {
     const result = window.prompt("Novo resultado? Digite: player1, player2 ou draw");
     if (!result || !["player1", "player2", "draw"].includes(result)) {
@@ -367,6 +389,7 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
 
       <div className="ab-tournament-meta">
         <span>Organizador: <strong>{t.organizer_username}</strong></span>
+        {t.is_official ? <span className="ab-tournament-official">★ Oficial (vale para o ranking)</span> : null}
         <span>Formato: <strong>{FORMAT_LABELS[t.format]}</strong></span>
         {t.store_name && <span>Loja: <strong>{t.store_name}</strong> ({t.store_city}/{t.store_state})</span>}
         {t.max_players && <span>Máx. jogadores: <strong>{t.max_players}</strong></span>}
@@ -440,6 +463,11 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
         <div className="ab-tournament-organizer">
           <div className="ab-sidebar-group-title">Controles do organizador</div>
           <div className="ab-tournament-organizer-actions">
+            {t.isAdmin && t.status === "inscricao" && (
+              <button className="ab-btn ab-btn-ghost" onClick={handleToggleOfficial} disabled={!!actionLoading}>
+                {t.is_official ? "Desmarcar como oficial" : "Marcar como oficial (ranking)"}
+              </button>
+            )}
             {t.status === "inscricao" && (
               <>
                 <button className="ab-btn ab-btn-primary" onClick={handleStart} disabled={!!actionLoading}>
@@ -637,6 +665,7 @@ export default function TournamentsTab({ user, flashToast, onRequestLogin }) {
     return (
       <section className="ab-section">
         <CreateTournamentForm
+          user={user}
           onCreated={() => {
             flashToast("Torneio criado!");
             setView("list");
@@ -723,6 +752,7 @@ export default function TournamentsTab({ user, flashToast, onRequestLogin }) {
                 <span className="ab-tournament-card-format">
                   {FORMAT_LABELS[t.format]}
                 </span>
+                {t.is_official ? <span className="ab-tournament-official">★ Oficial</span> : null}
               </div>
               <div className="ab-tournament-card-name">{t.name}</div>
               <div className="ab-tournament-card-meta">

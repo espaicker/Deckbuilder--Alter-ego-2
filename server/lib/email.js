@@ -19,7 +19,7 @@ function maskEmail(email) {
   return maskedUser + "@" + domain;
 }
 
-export async function sendEmail({ to, subject, body }) {
+export async function sendEmail({ to, subject, body, html }) {
   const provider = process.env.EMAIL_PROVIDER;
 
   if (provider === "resend" && process.env.RESEND_API_KEY) {
@@ -30,7 +30,7 @@ export async function sendEmail({ to, subject, body }) {
           "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ from: FROM_ADDRESS, to, subject, text: body }),
+        body: JSON.stringify({ from: FROM_ADDRESS, to, subject, text: body, ...(html ? { html } : {}) }),
       });
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
@@ -56,6 +56,25 @@ export async function sendEmail({ to, subject, body }) {
   console.log("========================================================");
   console.log("");
   return { sent: true, dev: true };
+}
+
+/**
+ * Problemas de configuracao que fazem o e-mail de recuperacao nao chegar.
+ * Mostrados no terminal quando o servidor sobe.
+ */
+export function emailConfigWarnings(env = process.env) {
+  const warnings = [];
+  const isProd = env.NODE_ENV === "production";
+  if (env.EMAIL_PROVIDER === "resend") {
+    if (!env.RESEND_API_KEY) warnings.push("EMAIL_PROVIDER=resend sem RESEND_API_KEY: nenhum e-mail sera enviado.");
+    if (!env.EMAIL_FROM) warnings.push("EMAIL_FROM nao definido: o Resend recusa o remetente padrao. Use um dominio verificado (ou onboarding@resend.dev so para testes).");
+  } else if (isProd) {
+    warnings.push("Sem EMAIL_PROVIDER em producao: os e-mails de recuperacao de senha NAO sao enviados, so aparecem no log do servidor.");
+  }
+  if (isProd && !env.SITE_URL && !env.RENDER_EXTERNAL_URL) {
+    warnings.push("SITE_URL nao definido em producao: o link de recuperacao de senha apontaria para localhost.");
+  }
+  return warnings;
 }
 
 export { maskEmail };

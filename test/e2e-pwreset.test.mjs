@@ -1,4 +1,4 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "url";
@@ -99,9 +99,34 @@ test("E2E Recuperacao de senha + email", async (t) => {
     assert.ok(resetToken, "Token deveria aparecer no console dev");
   });
 
+  await t.test("e-mail de recuperacao tem saudacao, assunto e validade", async () => {
+    assert.match(serverOutput, /Assunto: Redefinição de senha - Forja de Alter Egos/);
+    assert.match(serverOutput, /Olá, user1!/);
+    assert.match(serverOutput, /vale por 60 minutos e só pode ser usado uma vez/);
+  });
+
+  let pendingToken;
+  await t.test("segundo pedido gera outro link pendente", async () => {
+    serverOutput = "";
+    await req("POST", "/api/auth/forgot-password", { email: "user1@teste.com" });
+    await new Promise(r => setTimeout(r, 200));
+    pendingToken = extractTokenFromOutput();
+    assert.ok(pendingToken && pendingToken !== resetToken);
+  });
+
   await t.test("reset-password funciona uma vez", async () => {
     const { status, data } = await req("POST", "/api/auth/reset-password", { token: resetToken, newPassword: "novaSenha987" });
     assert.equal(status, 200, JSON.stringify(data));
+  });
+
+  await t.test("dono da conta recebe aviso de senha alterada", async () => {
+    await new Promise(r => setTimeout(r, 200));
+    assert.match(serverOutput, /Sua senha foi alterada - Forja de Alter Egos/);
+  });
+
+  await t.test("outros links pendentes sao invalidados apos redefinir", async () => {
+    const { status } = await req("POST", "/api/auth/reset-password", { token: pendingToken, newPassword: "maisUmaSenha55" });
+    assert.equal(status, 400);
   });
 
   await t.test("senha nova funciona no login", async () => {

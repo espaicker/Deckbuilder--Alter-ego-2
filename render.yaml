@@ -22,3 +22,15 @@ services:
       # admin gerada automaticamente mudaria a cada reinício.
       - key: ADMIN_PASSWORD
         sync: false
+      # E-mail de recuperacao de senha (Resend). Sem isso o link so aparece
+      # no log do servidor e o jogador nunca recebe o e-mail.
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # SITE_URL e opcional no Render: sem ela, o link usa RENDER_EXTERNAL_URL.
+      # Defina se usar um dominio proprio (ex: https://forjadealteregos.com.br).
+      - key: SITE_URL
+        sync: false

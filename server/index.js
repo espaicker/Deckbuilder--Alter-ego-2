@@ -1,9 +1,12 @@
+// Precisa ser o primeiro import: os outros modulos leem process.env ao carregar.
+import "./env.js";
 import express from "express";
 import cors from "cors";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { existsSync } from "fs";
 import { initDb } from "./db.js";
+import { emailConfigWarnings } from "./lib/email.js";
 import authRoutes from "./routes/auth.js";
 import deckRoutes from "./routes/decks.js";
 import adminRoutes from "./routes/admin.js";
@@ -75,4 +78,5 @@ if (existsSync(DIST_DIR)) {
 
 app.listen(PORT, () => {
   console.log(`[server] Rodando em http://localhost:${PORT}`);
+  for (const warning of emailConfigWarnings()) console.warn(`[server] AVISO: ${warning}`);
 });

@@ -2587,3 +2587,87 @@
 }
 .ab-account-email { margin-bottom: 18px; }
 .ab-reset-page { max-width: 460px; }
+
+/* ===================================================================
+   Ajustes de celular (auditoria mobile em 360px e 375px)
+   =================================================================== */
+
+/* Efeito do Alter Ego: corta em linha inteira com "…" (antes cortava no meio da linha) */
+.ab-ae-effect:not(.is-expanded) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.ab-profile-joined { display: block; margin-bottom: 6px; }
+.ab-profile-avatar, .ab-profile-avatar-placeholder { flex-shrink: 0; }
+
+/* Atalho para a lista do deck (só aparece no celular) */
+.ab-jump-to-deck {
+  display: none;
+  position: fixed;
+  right: 12px;
+  bottom: 16px;
+  z-index: 150;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--yellow);
+  color: #111;
+  border: 3px solid var(--border-color);
+  font-family: 'Bangers', cursive;
+  font-size: 15px;
+  letter-spacing: 1px;
+  box-shadow: 4px 4px 0 var(--shadow-color);
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  /* Cabeçalho compacto e sem ficar preso no topo: antes ocupava ~1/3 da tela */
+  .ab-hud { position: static; padding: 10px 12px 0; }
+  .ab-hud-top { gap: 8px 10px; padding-bottom: 8px; }
+  .ab-logo { width: 100%; }
+  .ab-logo-mark { width: 32px; height: 32px; }
+  .ab-logo-title { font-size: 18px; }
+  .ab-logo-sub { display: none; }
+  .ab-hud-alterego { padding: 4px 10px; }
+  .ab-hud-auth { margin-left: auto; }
+  .ab-hud-username { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ab-hud-meters { width: 100%; gap: 6px 14px; }
+  .ab-meter-track { width: 64px; }
+  .ab-tabs { gap: 6px; }
+  .ab-tab { padding: 10px 12px; font-size: 13px; }
+
+  /* Sub-abas quebram linha em vez de esconder itens fora da tela */
+  .ab-subtabs { flex-wrap: wrap; padding: 0; }
+  .ab-subtab { flex: 1 1 auto; padding: 10px 8px; font-size: 14px; }
+
+  /* Janela de login/cadastro cabe na tela */
+  .ab-modal-backdrop { padding: 12px; }
+  .ab-auth-modal { width: 100%; max-width: 420px; box-sizing: border-box; padding: 22px 18px; box-shadow: 6px 6px 0 var(--shadow-color); }
+
+  .ab-profile-header { gap: 14px; }
+  .ab-profile-avatar, .ab-profile-avatar-placeholder { width: 60px; height: 60px; font-size: 26px; }
+  .ab-profile-username { font-size: 22px; overflow-wrap: anywhere; }
+
+  .ab-cost-bar-count, .ab-cost-bar-label, .ab-ae-id { font-size: 12px; }
+
+  .ab-jump-to-deck { display: inline-flex; }
+  .ab-deck-main { padding-bottom: 72px; }
+}
+
+/* Alvos de toque maiores em telas sensíveis ao toque */
+@media (pointer: coarse) {
+  .ab-chip, .ab-btn-sm, .ab-hud-username-btn, .ab-sidebar-remove { min-height: 40px; }
+  .ab-chip-sm { min-height: 36px; }
+  .ab-link-btn { padding-top: 8px; padding-bottom: 8px; }
+}
+
+/* Resumo: caixa de exportação e linha de salvar não passam da largura */
+.ab-export-box, .ab-save-row .ab-input { box-sizing: border-box; max-width: 100%; }
+.ab-save-row { flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .ab-type-chart-legend { font-size: 12px; }
+}
+@media (pointer: coarse) {
+  .ab-preview-btn { min-height: 40px; }
+  .ab-auth-terms a { display: inline-block; padding: 6px 0; }
+}

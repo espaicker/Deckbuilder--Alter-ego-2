@@ -1,10 +1,11 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { randomBytes, createHash } from "crypto";
 import { JWT_SECRET, JWT_EXPIRES_IN, requireAuth } from "../middleware/auth.js";
 import { loginLimiter, registerLimiter, passwordResetLimiter, accountDeletionLimiter } from "../middleware/rateLimit.js";
 import { sendEmail } from "../lib/email.js";
+import { passwordResetEmail, passwordChangedEmail } from "../lib/emailTemplates.js";
 
 const router = Router();
 
@@ -16,7 +17,10 @@ const MAX_PASSWORD_LENGTH = 72; // limite do bcrypt
 const RESERVED_USERNAMES = new Set(["admin", "administrator", "administrador", "root", "system"]);
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
-const SITE_URL = process.env.SITE_URL || "http://localhost:5173";
+// URL publica do site para os links dos e-mails. Nunca vem do cabecalho Host da
+// requisicao (isso permitiria envenenar o link). No Render, RENDER_EXTERNAL_URL
+// e definido automaticamente.
+const SITE_URL = (process.env.SITE_URL || process.env.RENDER_EXTERNAL_URL || "http://localhost:5173").replace(/\/+$/, "");
 
 function hashToken(token) {
   return createHash("sha256").update(token).digest("hex");
@@ -151,7 +155,7 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
       return res.json(GENERIC); // nao vaza se e-mail e valido ou nao
     }
 
-    const user = req.db.prepare("SELECT id FROM users WHERE LOWER(email) = ?").get(email.trim().toLowerCase());
+    const user = req.db.prepare("SELECT id, username, email FROM users WHERE LOWER(email) = ?").get(email.trim().toLowerCase());
     if (!user) {
       return res.json(GENERIC); // nao vaza que o e-mail nao existe
     }
@@ -166,11 +170,11 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
     ).run(user.id, tokenHash, expiresAt, now);
 
     const link = `${SITE_URL}/resetar-senha?token=${rawToken}`;
-    await sendEmail({
-      to: email,
-      subject: "Recuperação de senha - Forja de Alter Egos",
-      body: `Você pediu para redefinir sua senha.\n\nAbra este link (válido por 1 hora):\n${link}\n\nSe não foi você, ignore este e-mail.`,
-    });
+    const message = passwordResetEmail({ username: user.username, link, ttlMinutes: RESET_TOKEN_TTL_MS / 60000 });
+    // Sem await: se esperasse o provedor de e-mail, a resposta demoraria mais
+    // quando o e-mail existe, e isso revelaria quais e-mails tem conta.
+    sendEmail({ to: user.email, subject: message.subject, body: message.text, html: message.html })
+      .catch(() => console.error("[auth] falha ao enviar e-mail de recuperacao"));
 
     res.json(GENERIC);
   } catch (err) {
@@ -203,7 +207,15 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
     req.db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, row.user_id);
-    req.db.prepare("UPDATE password_reset_tokens SET used = 1 WHERE id = ?").run(row.id);
+    // Invalida este e qualquer outro link pendente do mesmo usuario.
+    req.db.prepare("UPDATE password_reset_tokens SET used = 1 WHERE user_id = ?").run(row.user_id);
+
+    // Aviso de seguranca: avisa o dono da conta que a senha mudou.
+    const owner = req.db.prepare("SELECT username, email FROM users WHERE id = ?").get(row.user_id);
+    if (owner?.email) {
+      const notice = passwordChangedEmail({ username: owner.username, siteUrl: SITE_URL });
+      sendEmail({ to: owner.email, subject: notice.subject, body: notice.text, html: notice.html }).catch(() => {});
+    }
 
     res.json({ message: "Senha redefinida com sucesso." });
   } catch (err) {

@@ -1208,7 +1208,15 @@ export default function DeckBuilder() {
               </div>
             </div>
 
-            <aside className="ab-sidebar">
+            <button
+              type="button"
+              className="ab-jump-to-deck"
+              onClick={() => document.getElementById("ab-deck-sidebar")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              Ver meu deck · {mainDeckCount}/{MAIN_DECK_SIZE} · side {sideboardCount}
+            </button>
+
+            <aside className="ab-sidebar" id="ab-deck-sidebar">
               <div className="ab-sidebar-title">Seu deck</div>
               <div className={`ab-sidebar-count ${mainDeckCount > MAIN_DECK_SIZE ? "is-over" : ""}`}>
                 {mainDeckCount} / {MAIN_DECK_SIZE}

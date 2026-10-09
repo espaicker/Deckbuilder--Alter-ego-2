@@ -809,7 +809,7 @@
       "colors": [
         "Amarelo"
       ],
-      "cost": 2,
+      "cost": 1,
       "attributes": {
         "ataque": 1
       },
@@ -1166,7 +1166,7 @@
         "ataque": 2,
         "defesa": 2
       },
-      "effect": "Uma vez no turno, Desative 1 DROP: Olhe a carta do topo do seu próprio deck. Você poderá mantê-la no topo ou descartá-la.\n\nUma vez no turno, quando uma carta for descartada\ndo topo do seu próprio deck pelos seus efeitos ou pela sua habilidade, Desative uma carta que esteja Ativada no campo de um oponente, exceto por Alter Ego.",
+      "effect": "Uma vez no turno, desative 1 DROP: Olhe a carta do topo do seu próprio deck. Você poderá mantê-la no topo ou descartá-la.\n\nEm qualquer turno, para cada 12 cartas no seu descarte, as Especiais de cada oponente terão o \nseus custos de DROP aumentados em 1.",
       "keywords": []
     },
     {
@@ -1248,7 +1248,7 @@
       ],
       "cost": 3,
       "attributes": {},
-      "effect": "Até o começo do seu próximo turno, cada \noponente não poderá comprar cartas por \nefeitos.",
+      "effect": "Até o começo do seu próximo turno, toda vez \nque um oponente comprar cartas por efeitos ou \npor habilidades, ele colocará uma carta da mão \nno fundo do próprio deck.",
       "keywords": []
     },
     {
@@ -1470,7 +1470,7 @@
       "colors": [
         "Roxo"
       ],
-      "cost": 3,
+      "cost": 6,
       "attributes": {},
       "effect": "Some a quantidade de cartas no seu descarte \ncom a quantidade de cartas no descarte de um \noutro jogador alvo. Para cada cinco cartas, o \nAlter Ego alvo perderá 1 Ponto de Vida e o seu \nAlter Ego ganhará 1 Ponto de Vida.",
       "keywords": []
@@ -1490,30 +1490,30 @@
     },
     {
       "id": "REE-0012",
-      "name": "Expurgo Forçado",
-      "type": "Ação",
+      "name": "Roubar Recursos",
+      "type": "Reação",
       "subtype": "especial",
       "colors": [
         "Roxo"
       ],
       "cost": 3,
       "attributes": {},
-      "effect": "O jogador alvo escolherá uma carta anexada ao \nseu próprio Alter Ego. Em seguida, destrua as \noutras cartas que estejam anexadas.",
+      "effect": "Até o começo do seu próximo turno, cada \noponente não poderá comprar cartas por \nefeitos.",
       "keywords": []
     },
     {
       "id": "ACO-0021",
-      "name": "Sem Piedade",
+      "name": "Colisão",
       "type": "Ação",
       "subtype": "ofensiva",
       "colors": [
         "Roxo"
       ],
-      "cost": 5,
+      "cost": 4,
       "attributes": {
-        "ataque": 5
+        "ataque": 2
       },
-      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo anexar, destrua uma Tática que esteja \nDesativada em campo.",
+      "effect": "Anexe esta carta ao seu Alter Ego.\n\nAo atacar, destrua uma Tática que esteja \nDesativada em campo.",
       "keywords": []
     },
     {

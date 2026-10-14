@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { api } from "../lib/api.js";
 import { AccountDataSettings } from "./LegalPage.jsx";
+import { playerPath } from "../lib/communityRoutes.js";
+import { shareLink } from "../lib/share.js";
 
 const STYLE_CLASS = {
   "Agressivo": "is-agressivo",
@@ -90,7 +92,15 @@ export default function ProfilePage({ username, user, flashToast, onBack }) {
 
   return (
     <section className="ab-section">
-      <button className="ab-btn ab-btn-ghost" onClick={onBack}>← Voltar</button>
+      <div className="ab-detail-toolbar">
+        <button className="ab-btn ab-btn-ghost" onClick={onBack}>← Voltar</button>
+        <button
+          className="ab-btn ab-btn-ghost"
+          onClick={() => shareLink(playerPath(p.username), `${p.username} — Forja de Alter Egos`, flashToast)}
+        >
+          Compartilhar perfil
+        </button>
+      </div>
 
       {/* Header */}
       <div className="ab-profile-header">

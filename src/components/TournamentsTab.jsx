@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { api } from "../lib/api.js";
+import { tournamentPath } from "../lib/communityRoutes.js";
+import { shareLink } from "../lib/share.js";
 
 const FORMAT_LABELS = {
   swiss: "Suíço",
@@ -378,7 +380,15 @@ function TournamentDetail({ tournamentId, user, flashToast, onBack, onRequestLog
 
   return (
     <section className="ab-section ab-tournament-detail">
-      <button className="ab-btn ab-btn-ghost" onClick={onBack}>← Voltar</button>
+      <div className="ab-detail-toolbar">
+        <button className="ab-btn ab-btn-ghost" onClick={onBack}>← Voltar</button>
+        <button
+          className="ab-btn ab-btn-ghost"
+          onClick={() => shareLink(tournamentPath(t.id), `${t.name} — Forja de Alter Egos`, flashToast)}
+        >
+          Compartilhar link
+        </button>
+      </div>
 
       <div className="ab-tournament-detail-header">
         <h2 className="ab-section-title">{t.name}</h2>
@@ -633,11 +643,15 @@ function isPlayerInMatch(match, myRegistration) {
 /* ============================================================
    TOURNAMENT LIST (main view)
    ============================================================ */
-export default function TournamentsTab({ user, flashToast, onRequestLogin }) {
+const noop = () => {};
+
+export default function TournamentsTab({
+  user, flashToast, onRequestLogin,
+  tournamentId = null, onOpenTournament = noop, onCloseTournament = noop,
+}) {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("list"); // list | create | detail
-  const [selectedId, setSelectedId] = useState(null);
+  const [view, setView] = useState("list"); // list | create (o detalhe vem da URL)
   const [filterStatus, setFilterStatus] = useState("todos");
 
   useEffect(() => {
@@ -677,13 +691,13 @@ export default function TournamentsTab({ user, flashToast, onRequestLogin }) {
     );
   }
 
-  if (view === "detail" && selectedId) {
+  if (tournamentId) {
     return (
       <TournamentDetail
-        tournamentId={selectedId}
+        tournamentId={tournamentId}
         user={user}
         flashToast={flashToast}
-        onBack={() => { setView("list"); loadTournaments(); }}
+        onBack={() => { onCloseTournament(); loadTournaments(); }}
         onRequestLogin={onRequestLogin}
       />
     );
@@ -743,7 +757,15 @@ export default function TournamentsTab({ user, flashToast, onRequestLogin }) {
             <div
               key={t.id}
               className="ab-tournament-card"
-              onClick={() => { setSelectedId(t.id); setView("detail"); }}
+              role="link"
+              tabIndex={0}
+              onClick={() => onOpenTournament(t.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOpenTournament(t.id);
+                }
+              }}
             >
               <div className="ab-tournament-card-top">
                 <span className={`ab-tournament-status ${STATUS_CLASS[t.status]}`}>

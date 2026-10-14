@@ -178,6 +178,28 @@ export const DECK_RULES = Object.freeze({
 Mudar esses valores atualiza automaticamente a validação, os medidores do
 HUD e a geração de PDF — é a única fonte de verdade dessas regras.
 
+## Links compartilháveis e metagame
+
+Cada tela da Comunidade tem um endereço próprio, que pode ser copiado pelo
+botão "Compartilhar link":
+
+| Endereço | Tela |
+| --- | --- |
+| `/comunidade/decks/<id>` | Deck publicado |
+| `/comunidade/torneios/<id>` | Torneio |
+| `/comunidade/jogadores/<usuário>` | Perfil público |
+| `/comunidade/meta` | Metagame |
+
+Ao colar um desses links no WhatsApp ou Discord, a prévia mostra o título e a
+descrição da página: o servidor injeta as tags Open Graph no `index.html`
+(`server/lib/ogTags.js`). A imagem da prévia exige URL absoluta, então em
+produção defina `SITE_URL` (ou deixe o Render preencher `RENDER_EXTERNAL_URL`).
+
+A aba **Meta** usa `GET /api/meta` (público, cache de 1 minuto): participação
+de cada Alter Ego nos decks publicados, taxa de vitória nos torneios
+finalizados (`?oficial=1` considera só os oficiais) e a lista típica de cada
+arquétipo (cartas presentes em pelo menos metade dos decks).
+
 ## Impressão de deck como proxy (PDF)
 
 O botão "Gerar PDF de proxies" (aba Resumo) abre uma janela com a folha de

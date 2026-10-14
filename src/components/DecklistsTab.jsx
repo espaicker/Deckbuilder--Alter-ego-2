@@ -3,6 +3,8 @@ import { api } from "../lib/api.js";
 import { COLOR_HEX } from "../lib/constants.js";
 import { DECK_RULES, countEntries, createCardIndex, colorBreakdown, costCurve, attackDefenseAverages, standardDropPile } from "../lib/deckRules.js";
 import { useCardData } from "../hooks/useCardData.jsx";
+import { deckPath } from "../lib/communityRoutes.js";
+import { shareLink } from "../lib/share.js";
 
 // Índice das cartas atuais (GET /api/cards, com o JSON do build como
 // fallback). Calculado uma vez por versão dos dados e compartilhado entre os
@@ -94,7 +96,7 @@ function CardGroups({ groups }) {
   );
 }
 
-function DeckDetails({ deck, onClose, onCompare }) {
+function DeckDetails({ deck, onClose, onCompare, onViewProfile, flashToast }) {
   const cardIndex = useCardIndex();
   const ae = cardIndex.get(deck.alter_ego_id);
   const mainDeck = deck.main_deck || {};
@@ -112,11 +114,24 @@ function DeckDetails({ deck, onClose, onCompare }) {
 
   return (
     <div className="ab-community-detail">
-      <button className="ab-btn ab-btn-ghost" onClick={onClose}>← Voltar</button>
+      <div className="ab-detail-toolbar">
+        <button className="ab-btn ab-btn-ghost" onClick={onClose}>← Voltar</button>
+        <button
+          className="ab-btn ab-btn-ghost"
+          onClick={() => shareLink(deckPath(deck.id), `${deck.name} — Forja de Alter Egos`, flashToast)}
+        >
+          Compartilhar link
+        </button>
+      </div>
       <div className="ab-community-detail-header">
         <DeckColorDots alterEgoId={deck.alter_ego_id} />
         <h2>{deck.name}</h2>
-        <span className="ab-community-card-author">por {deck.author}</span>
+        <span className="ab-community-card-author">
+          por{" "}
+          {onViewProfile ? (
+            <button className="ab-link-btn" onClick={() => onViewProfile(deck.author)}>{deck.author}</button>
+          ) : deck.author}
+        </span>
       </div>
       <div className="ab-community-detail-meta">
         <span>Alter Ego: <strong>{ae?.name || deck.alter_ego_id}</strong></span>
@@ -372,17 +387,53 @@ function PublishForm({ alterEgo, mainDeck, sideboard, onPublish, onCancel }) {
   );
 }
 
-export default function CommunityTab({ user, alterEgo, mainDeck, sideboard, flashToast, onRequestLogin }) {
+const noop = () => {};
+
+export default function CommunityTab({
+  user, alterEgo, mainDeck, sideboard, flashToast, onRequestLogin,
+  deckId = null, onOpenDeck = noop, onCloseDeck = noop, onViewProfile,
+}) {
   const cardIndex = useCardIndex();
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("list"); // list | detail | compare | publish
-  const [selectedDeck, setSelectedDeck] = useState(null);
+  const [view, setView] = useState("list"); // list | compare | publish (o detalhe vem da URL)
   const [compareDeckA, setCompareDeckA] = useState(null);
+  // Deck aberto pelo link (/comunidade/decks/:id) que ainda nao esta na lista.
+  const [fetchedDeck, setFetchedDeck] = useState(null);
+  const [deckStatus, setDeckStatus] = useState("idle"); // idle | loading | missing
 
   useEffect(() => {
     loadDecks();
   }, []);
+
+  const listedDeck = deckId ? decks.find((d) => d.id === deckId) || null : null;
+  const selectedDeck = listedDeck || (fetchedDeck && fetchedDeck.id === deckId ? fetchedDeck : null);
+
+  // Link direto para um deck: busca na API se ele nao veio na lista
+  // (a lista mostra so os 100 mais recentes).
+  useEffect(() => {
+    if (!deckId || listedDeck || loading) {
+      setDeckStatus("idle");
+      return;
+    }
+    let cancelled = false;
+    setDeckStatus("loading");
+    api.getDeck(deckId)
+      .then((deck) => {
+        if (cancelled) return;
+        setFetchedDeck(deck);
+        setDeckStatus("idle");
+      })
+      .catch(() => {
+        if (!cancelled) setDeckStatus("missing");
+      });
+    return () => { cancelled = true; };
+  }, [deckId, listedDeck, loading]);
+
+  // Ao abrir outro deck pelo link, sai da comparacao/publicacao.
+  useEffect(() => {
+    if (deckId) setView("list");
+  }, [deckId]);
 
   async function loadDecks() {
     setLoading(true);
@@ -398,8 +449,7 @@ export default function CommunityTab({ user, alterEgo, mainDeck, sideboard, flas
   }
 
   function handleSelect(deck) {
-    setSelectedDeck(deck);
-    setView("detail");
+    onOpenDeck(deck.id);
   }
 
   function handleCompare(deck) {
@@ -420,29 +470,10 @@ export default function CommunityTab({ user, alterEgo, mainDeck, sideboard, flas
       flashToast("Deck removido.");
       loadDecks();
       setView("list");
+      onCloseDeck();
     } catch (err) {
       flashToast(err.message);
     }
-  }
-
-  if (view === "detail" && selectedDeck) {
-    return (
-      <section className="ab-section">
-        <DeckDetails
-          deck={selectedDeck}
-          onClose={() => setView("list")}
-          onCompare={handleCompare}
-        />
-        {user && selectedDeck.is_mine && (
-          <button
-            className="ab-btn ab-btn-ghost ab-delete-btn"
-            onClick={() => handleDelete(selectedDeck.id)}
-          >
-            Remover meu deck
-          </button>
-        )}
-      </section>
-    );
   }
 
   if (view === "compare" && compareDeckA) {
@@ -454,6 +485,39 @@ export default function CommunityTab({ user, alterEgo, mainDeck, sideboard, flas
           onClose={() => setView("list")}
           allDecks={decks}
         />
+      </section>
+    );
+  }
+
+  if (deckId && !selectedDeck) {
+    return (
+      <section className="ab-section">
+        <button className="ab-btn ab-btn-ghost" onClick={onCloseDeck}>← Voltar</button>
+        <div className="ab-empty">
+          {deckStatus === "missing" ? "Deck não encontrado. Ele pode ter sido removido pelo autor." : "Carregando deck…"}
+        </div>
+      </section>
+    );
+  }
+
+  if (deckId && selectedDeck) {
+    return (
+      <section className="ab-section">
+        <DeckDetails
+          deck={selectedDeck}
+          onClose={onCloseDeck}
+          onCompare={handleCompare}
+          onViewProfile={onViewProfile}
+          flashToast={flashToast}
+        />
+        {user && selectedDeck.is_mine && (
+          <button
+            className="ab-btn ab-btn-ghost ab-delete-btn"
+            onClick={() => handleDelete(selectedDeck.id)}
+          >
+            Remover meu deck
+          </button>
+        )}
       </section>
     );
   }

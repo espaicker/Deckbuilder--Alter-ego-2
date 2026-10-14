@@ -3,7 +3,7 @@ import "./env.js";
 import express from "express";
 import cors from "cors";
 import { join } from "path";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { initDb } from "./db.js";
 import { emailConfigWarnings } from "./lib/email.js";
 import {
@@ -12,6 +12,9 @@ import {
 import { seedDataDir } from "./lib/seedData.js";
 import { resolveBackupConfig, startBackupSchedule } from "./lib/backup.js";
 import { resolveTrustProxy, resolveCorsOptions, securityHeaders } from "./middleware/security.js";
+import { readCardData } from "./lib/cardStore.js";
+import { resolveOgMeta, renderHtmlWithMeta, resolveSiteUrl, DEFAULT_META } from "./lib/ogTags.js";
+import metaRoutes from "./routes/meta.js";
 import authRoutes from "./routes/auth.js";
 import deckRoutes from "./routes/decks.js";
 import adminRoutes from "./routes/admin.js";
@@ -64,6 +67,7 @@ app.use("/api/admin/cards", cardsRoutes);
 app.use("/api/cards", publicCardsRouter);
 app.use("/api/tournaments", tournamentRoutes);
 app.use("/api/ranking", rankingRoutes);
+app.use("/api/meta", metaRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/forum", forumRoutes);
 app.use("/api/stores", storesRoutes);
@@ -95,11 +99,29 @@ app.use(
 if (existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR));
   app.get("/admin", (req, res) => res.sendFile(join(DIST_DIR, "admin.html")));
-  app.get("/", (req, res) => res.sendFile(join(DIST_DIR, "index.html")));
+
+  // index.html com as tags de pre-visualizacao (Open Graph) da pagina pedida:
+  // deck, perfil, torneio e meta mostram titulo/descricao proprios ao colar o
+  // link no WhatsApp/Discord. O HTML do build e lido uma vez.
+  const indexHtml = readFileSync(join(DIST_DIR, "index.html"), "utf-8");
+  const siteUrl = resolveSiteUrl(process.env);
+  const sendIndex = (req, res) => {
+    let cardIndex = null;
+    try {
+      cardIndex = new Map(readCardData().cards.map((c) => [c.id, c]));
+    } catch { /* sem dados de cartas: usa os ids */ }
+    const meta = resolveOgMeta(req.path, { db, cardIndex });
+    res.set("Cache-Control", "no-cache");
+    // Paginas sem pre-visualizacao propria recebem o HTML do build intacto
+    // (ele ja traz as tags padrao do site).
+    if (meta === DEFAULT_META) return res.type("html").send(indexHtml);
+    res.type("html").send(renderHtmlWithMeta(indexHtml, meta, { siteUrl, pathname: req.path }));
+  };
+  app.get("/", sendIndex);
   // SPA fallback — qualquer rota que não é API nem arquivo estático serve o index.html
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api/") || req.path.startsWith("/assets/")) return next();
-    res.sendFile(join(DIST_DIR, "index.html"));
+    sendIndex(req, res);
   });
 }
 

@@ -184,6 +184,9 @@ export const api = {
 
   getRankingHistory: (userId) => request("GET", `/ranking/${userId}/history`),
 
+  // Metagame publico
+  getMeta: (officialOnly = false) => request("GET", officialOnly ? "/meta?oficial=1" : "/meta"),
+
   // Profile
   getProfile: (username) => request("GET", `/profile/${encodeURIComponent(username)}`),
 

@@ -210,7 +210,7 @@ router.get("/:id", optionalAuth, (req, res) => {
 
     const deck = req.db.prepare(`
       SELECT
-        d.id, d.name, d.alter_ego_id, d.main_deck, d.sideboard, d.drop_pile,
+        d.id, d.user_id, d.name, d.alter_ego_id, d.main_deck, d.sideboard, d.drop_pile,
         d.description, d.created_at,
         u.username AS author
       FROM community_decks d
@@ -223,7 +223,9 @@ router.get("/:id", optionalAuth, (req, res) => {
     }
 
     const { cardIndex } = loadCardData();
-    res.json(serializeDeck(deck, cardIndex));
+    // is_mine permite mostrar "Remover meu deck" ao abrir o link direto do deck.
+    const { user_id, ...rest } = serializeDeck(deck, cardIndex);
+    res.json({ ...rest, is_mine: req.user ? user_id === req.user.id : false });
   } catch (err) {
     console.error("[decks] get error:", err);
     res.status(500).json({ error: "Erro ao buscar deck." });

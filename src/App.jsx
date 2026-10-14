@@ -1455,8 +1455,6 @@ export default function DeckBuilder() {
 
         {tab === "comunidade" && (
           <CommunityPage
-            key={location.pathname}
-            initialSubtab={location.pathname === "/comunidade/perfil" ? "perfil" : undefined}
             user={user}
             alterEgo={alterEgo}
             mainDeck={mainDeck}

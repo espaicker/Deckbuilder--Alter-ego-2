@@ -1,9 +1,10 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { randomBytes, createHash } from "crypto";
-import { JWT_SECRET, JWT_EXPIRES_IN, requireAuth } from "../middleware/auth.js";
-import { loginLimiter, registerLimiter, passwordResetLimiter, accountDeletionLimiter } from "../middleware/rateLimit.js";
+import { requireAuth, signUserToken } from "../middleware/auth.js";
+import {
+  loginLimiter, registerLimiter, passwordResetLimiter, accountDeletionLimiter, passwordChangeLimiter,
+} from "../middleware/rateLimit.js";
 import { sendEmail } from "../lib/email.js";
 import { passwordResetEmail, passwordChangedEmail } from "../lib/emailTemplates.js";
 
@@ -68,11 +69,7 @@ router.post("/register", registerLimiter, async (req, res) => {
       "INSERT INTO users (username, password_hash, email, terms_accepted_at) VALUES (?, ?, ?, ?)"
     ).run(username, passwordHash, normalizedEmail, now);
 
-    const token = jwt.sign(
-      { sub: result.lastInsertRowid, username },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
+    const token = signUserToken({ id: result.lastInsertRowid, username, token_version: 0 });
 
     res.status(201).json({
       token,
@@ -101,11 +98,7 @@ router.post("/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ error: "Usuário ou senha incorretos." });
     }
 
-    const token = jwt.sign(
-      { sub: user.id, username: user.username },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
+    const token = signUserToken(user);
 
     res.json({
       token,
@@ -206,7 +199,10 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
     if (Date.now() > row.expires_at) return res.status(400).json({ error: "Este link expirou." });
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
-    req.db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, row.user_id);
+    // token_version + 1: invalida todas as sessoes abertas antes da redefinicao.
+    req.db.prepare(
+      "UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?"
+    ).run(passwordHash, row.user_id);
     // Invalida este e qualquer outro link pendente do mesmo usuario.
     req.db.prepare("UPDATE password_reset_tokens SET used = 1 WHERE user_id = ?").run(row.user_id);
 
@@ -221,6 +217,47 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
   } catch (err) {
     console.error("[auth] reset-password error:", err);
     res.status(500).json({ error: "Erro ao redefinir senha." });
+  }
+});
+
+// POST /api/auth/change-password — troca a senha do usuario logado (exige a
+// senha atual). Invalida todas as sessoes anteriores e devolve um token novo
+// para a sessao que fez a troca.
+router.post("/change-password", passwordChangeLimiter, requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || typeof currentPassword !== "string") {
+      return res.status(400).json({ error: "Confirme com sua senha atual." });
+    }
+    if (!newPassword || typeof newPassword !== "string" || newPassword.length < MIN_PASSWORD_LENGTH || newPassword.length > MAX_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        error: `Senha deve ter entre ${MIN_PASSWORD_LENGTH} e ${MAX_PASSWORD_LENGTH} caracteres.`,
+      });
+    }
+
+    const user = req.db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
+
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) return res.status(401).json({ error: "Senha atual incorreta." });
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    req.db.prepare(
+      "UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?"
+    ).run(passwordHash, user.id);
+
+    const updated = req.db.prepare("SELECT id, username, email, token_version FROM users WHERE id = ?").get(user.id);
+    const token = signUserToken(updated);
+
+    if (updated.email) {
+      const notice = passwordChangedEmail({ username: updated.username, siteUrl: SITE_URL });
+      sendEmail({ to: updated.email, subject: notice.subject, body: notice.text, html: notice.html }).catch(() => {});
+    }
+
+    res.json({ message: "Senha alterada com sucesso.", token });
+  } catch (err) {
+    console.error("[auth] change-password error:", err);
+    res.status(500).json({ error: "Erro ao alterar senha." });
   }
 });
 
@@ -309,8 +346,9 @@ router.delete("/me", accountDeletionLimiter, requireAuth, async (req, res) => {
     const deadHash = await bcrypt.hash(randomBytes(32).toString("hex"), 10);
     const anonUsername = `Usuario removido #${user.id}`;
 
+    // token_version + 1: rejeita qualquer token emitido antes para esta conta.
     req.db.prepare(
-      "UPDATE users SET username = ?, email = NULL, password_hash = ?, bio = '', avatar_url = NULL WHERE id = ?"
+      "UPDATE users SET username = ?, email = NULL, password_hash = ?, bio = '', avatar_url = NULL, token_version = token_version + 1 WHERE id = ?"
     ).run(anonUsername, deadHash, user.id);
 
     // Remove tokens de recuperacao pendentes (nao ha mais conta para recuperar).

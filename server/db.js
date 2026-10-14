@@ -1,29 +1,47 @@
 import initSqlJs from "sql.js";
-import { readFileSync, writeFileSync, existsSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { readFileSync, existsSync } from "fs";
+import { basename, dirname } from "path";
+// DATA_DIR (ver server/lib/paths.js) permite apontar o banco para um disco
+// persistente em produção (ex: o disco do Render montado em /data). Sem essa
+// variável, usa a própria pasta server/.
+import { DB_PATH } from "./lib/paths.js";
+import { writeFileAtomicSync, cleanupStaleTemps } from "./lib/atomicWrite.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-// DATA_DIR permite apontar o banco para um disco persistente em produção
-// (ex: um Persistent Disk do Render montado em /data). Sem essa variável,
-// usa a própria pasta server/ — funciona local, mas não sobrevive a
-// redeploys/reinícios em serviços com sistema de arquivos efêmero.
-const DATA_DIR = process.env.DATA_DIR || __dirname;
-const DB_PATH = join(DATA_DIR, "deckbuilder.db");
+const DEFAULT_SAVE_DELAY_MS = 250;
+const RETRY_DELAY_MS = 5000;
+
+function resolveSaveDelay(value) {
+  if (value === undefined || value === null || value === "") return DEFAULT_SAVE_DELAY_MS;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_SAVE_DELAY_MS;
+}
 
 /**
  * Wrapper que expõe a mesma API do better-sqlite3 usando sql.js.
  * Evita compilação nativa — funciona em qualquer Windows sem Build Tools.
+ *
+ * Persistência: o banco vive em memória e as leituras veem cada escrita na
+ * hora. A gravação em disco é agrupada (debounce): exec()/run() só marcam o
+ * banco como "sujo" e um único timer grava o arquivo inteiro, de forma
+ * atômica, no fim da janela (DB_SAVE_DELAY_MS, padrão 250 ms). flush() grava
+ * na hora (encerramento, backup, testes).
+ *
+ * A gravação é síncrona de propósito: bloqueia o event loop no máximo uma vez
+ * por janela (e não mais uma vez por comando) e evita corridas entre gravações
+ * assíncronas concorrentes e o flush de encerramento.
  */
 class DbWrapper {
-  constructor(db) {
+  constructor(db, { dbPath = DB_PATH, saveDelayMs } = {}) {
     this._db = db;
+    this._dbPath = dbPath;
+    this._saveDelayMs = resolveSaveDelay(saveDelayMs);
+    this._dirty = false;
+    this._timer = null;
   }
 
   exec(sql) {
     this._db.run(sql);
-    this._save();
+    this._markDirty();
   }
 
   prepare(sql) {
@@ -34,11 +52,72 @@ class DbWrapper {
     this._db.run(`PRAGMA ${pragma}`);
   }
 
-  _save() {
-    const data = this._db.export();
-    writeFileSync(DB_PATH, Buffer.from(data));
+  /**
+   * Grava as alterações pendentes no disco (síncrono e idempotente).
+   * Retorna true se gravou, false se não havia nada pendente. Em erro, mantém
+   * as alterações pendentes, agenda nova tentativa e relança o erro para quem
+   * chamou explicitamente (o timer de debounce só registra no log).
+   */
+  flush() {
+    if (!this._dirty) return false;
+    this._clearTimer();
+    try {
+      const data = this._db.export();
+      writeFileAtomicSync(this._dbPath, data);
+      this._dirty = false;
+      return true;
+    } catch (err) {
+      console.error(`[db] Falha ao gravar o banco em disco (${err?.code || "erro desconhecido"}). Nova tentativa em ${RETRY_DELAY_MS / 1000} s.`);
+      this._schedule(RETRY_DELAY_MS);
+      throw err;
+    }
+  }
+
+  /** Cópia consistente do banco (inclui escritas ainda não gravadas). */
+  serialize() {
+    this.flush();
+    return this._db.export();
+  }
+
+  /** Cancela o timer pendente e grava o que faltar. */
+  close() {
+    this._clearTimer();
+    return this.flush();
+  }
+
+  _markDirty() {
+    this._dirty = true;
+    this._schedule(this._saveDelayMs);
+  }
+
+  _schedule(delayMs) {
+    if (this._timer) return;
+    this._timer = setTimeout(() => {
+      this._timer = null;
+      try {
+        this.flush();
+      } catch {
+        // Já registrado em flush(); uma nova tentativa foi agendada.
+      }
+    }, delayMs);
+    if (typeof this._timer.unref === "function") this._timer.unref();
+  }
+
+  _clearTimer() {
+    if (this._timer) {
+      clearTimeout(this._timer);
+      this._timer = null;
+    }
+  }
+
+  _scalar(sql) {
+    const res = this._db.exec(sql);
+    return res.length > 0 ? res[0].values[0][0] : 0;
   }
 }
+
+// Comandos que podem inserir linhas (e portanto definem lastInsertRowid).
+const INSERT_RE = /^\s*(?:INSERT|REPLACE)\b/i;
 
 class StatementWrapper {
   constructor(wrapper, sql) {
@@ -69,30 +148,48 @@ class StatementWrapper {
   }
 
   run(...params) {
-    const stmt = this._wrapper._db.prepare(this._sql);
-    if (params.length > 0) stmt.bind(params);
-    stmt.step();
-    stmt.free();
-    const changes = this._wrapper._db.getRowsModified();
-    const lastIdResult = this._wrapper._db.exec("SELECT last_insert_rowid() as id");
-    const lastInsertRowid = lastIdResult.length > 0 ? lastIdResult[0].values[0][0] : 0;
-    this._wrapper._save();
+    const wrapper = this._wrapper;
+    // Antes do debounce, cada run() terminava com export(), que reabre o banco
+    // e zera changes/last_insert_rowid da conexão. Para devolver exatamente os
+    // mesmos valores de antes, os dois são calculados só sobre ESTE comando:
+    // sem alteração de linhas -> changes 0; lastInsertRowid só para INSERT que
+    // inseriu (senão 0).
+    const totalBefore = wrapper._scalar("SELECT total_changes()");
+    const stmt = wrapper._db.prepare(this._sql);
+    try {
+      if (params.length > 0) stmt.bind(params);
+      stmt.step();
+    } finally {
+      stmt.free();
+    }
+    const modified = wrapper._scalar("SELECT total_changes()") !== totalBefore;
+    const changes = modified ? wrapper._db.getRowsModified() : 0;
+    const lastInsertRowid = modified && INSERT_RE.test(this._sql) ? wrapper._scalar("SELECT last_insert_rowid()") : 0;
+    wrapper._markDirty();
     return { changes, lastInsertRowid };
   }
 }
 
-export async function initDb() {
+/**
+ * Abre (ou cria) o banco e aplica o schema/migrações.
+ * Parâmetros opcionais para testes: { dbPath, saveDelayMs }. Sem argumentos,
+ * usa DATA_DIR/deckbuilder.db e DB_SAVE_DELAY_MS (padrão 250 ms).
+ */
+export async function initDb({ dbPath = DB_PATH, saveDelayMs = process.env.DB_SAVE_DELAY_MS } = {}) {
   const SQL = await initSqlJs();
 
+  // Temporários deixados por um processo que caiu no meio de uma gravação.
+  cleanupStaleTemps(dirname(dbPath), basename(dbPath));
+
   let db;
-  if (existsSync(DB_PATH)) {
-    const buffer = readFileSync(DB_PATH);
+  if (existsSync(dbPath)) {
+    const buffer = readFileSync(dbPath);
     db = new SQL.Database(buffer);
   } else {
     db = new SQL.Database();
   }
 
-  const wrapper = new DbWrapper(db);
+  const wrapper = new DbWrapper(db, { dbPath, saveDelayMs });
 
   wrapper.pragma("foreign_keys = ON");
 
@@ -391,6 +488,26 @@ export async function initDb() {
   } catch (e) {
     // Column already exists — ignore
   }
+
+  // Migration: versão da sessão (revogação de tokens após troca/redefinição de
+  // senha ou exclusão de conta). Tokens sem claim "tv" valem como 0.
+  try {
+    const cols = wrapper.prepare("PRAGMA table_info(users)").all();
+    if (!cols.some((col) => col.name === "token_version")) {
+      wrapper.exec("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0");
+    }
+  } catch (e) { /* ignore */ }
+
+  // Flush forçado ao fim da inicialização: garante que o arquivo exista após o
+  // boot (como antes) e mantém o estado efetivo dos PRAGMAs determinístico.
+  // O export() do sql.js fecha e reabre o banco, o que reinicia os PRAGMAs:
+  // "foreign_keys = ON" lá em cima vale só durante a criação do schema e, a
+  // partir daqui, foreign_keys fica efetivamente 0 em runtime — exatamente
+  // como antes do debounce (quando todo exec() fazia export()). Ligar as FKs
+  // de verdade é trabalho futuro (há inserts que dependem disso, ex.: artigos
+  // do admin com author_user_id 0).
+  wrapper._dirty = true;
+  wrapper.flush();
 
   return wrapper;
 }

@@ -141,6 +141,21 @@ servidor próprio (Vercel, Netlify ou GitHub Pages, por exemplo).
 Se uma carta ainda não tiver arte pronta, o app não quebra — mostra um
 retângulo de cor sólida no lugar até você adicionar o arquivo.
 
+### Cartas editadas pelo painel admin (`DATA_DIR`)
+
+O servidor guarda as cartas editáveis em `DATA_DIR/cards/modelo_cartas.json`
+(sem `DATA_DIR`, em desenvolvimento: `server/cards/modelo_cartas.json`) e as
+imagens/avatares enviados em `DATA_DIR/assets/`. Na primeira execução essas
+cópias são semeadas a partir de `src/data/modelo_cartas.json` e de
+`public/assets/` — depois disso, o JSON de `src/data/` é só o ponto de
+partida e o fallback do frontend (que busca as cartas atuais em
+`GET /api/cards`).
+
+- Para voltar ao JSON do repositório no dev, apague `server/cards/modelo_cartas.json`
+  e reinicie o servidor (ele é semeado de novo).
+- Para levar ao repositório as cartas que você editou no admin local, copie
+  `server/cards/modelo_cartas.json` de volta para `src/data/modelo_cartas.json`.
+
 ### Cartas de Drop
 
 As 5 cartas de Drop (uma por cor) usam os ids `"82"` a `"86"` em

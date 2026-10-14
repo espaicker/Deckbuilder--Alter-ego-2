@@ -1,0 +1,180 @@
+{
+  "pbtResults": {
+    "1. Escrever os testes exploratórios da condição do bug": {
+      "status": "passed",
+      "failingExample": "All 11 exploratory files FAIL on unfixed code (bug confirmed). Counterexamples:\n- deploy-config: \"plano atual: free\"; bloco disk ausente; DATA_DIR ausente (null != \"/data\"); TRUST_PROXY ausente.\n- db-persistence: \"arquivo do banco ja contem as 50 linhas sem flush\"; Property 1 (seed 1592594996) ops [flush, insert, update, flush, update, delete, insert] -> disco [{id:2,v:'uyDBSV3F'}] != estado no ultimo flush [{id:1,v:'HF'}] (cada run() regrava o arquivo inteiro).\n- atomic-write / backup / seed-data / card-data-source: ERR_MODULE_NOT_FOUND (server/lib/atomicWrite.js, server/lib/backup.js, server/lib/seedData.js, src/lib/cardDataSource.js) — nao existe gravacao atomica, backup, seed nem carga de cartas em runtime.\n- security (rate limit): contraexemplo {a:\"214.55.250.6\", b:\"22.178.213.96\"} -> \"segundo cliente recebeu 429 por causa das falhas do primeiro\" (sem trust proxy; express-rate-limit emite ERR_ERL_UNEXPECTED_X_FORWARDED_FOR).\n- security (CORS): \"origem maliciosa refletida: https://site-malicioso.example\"; Property 7 origem aleatoria https://sqjb5nso.j.7ix.example:42289 refletida em producao.\n- e2e-session: POST /api/auth/change-password -> 404; token antigo responde 200 apos reset-password; token antigo responde 200 apos DELETE /api/auth/me; /api/decks/community com token revogado ainda retorna is_mine: true.\n- e2e-security-headers: /api/health, /assets/cards/ACA-0001.jpg e 404 sem X-Content-Type-Options / X-Frame-Options / CSP.\n- e2e-persistence: DATA_DIR/cards/modelo_cartas.json nao existe; src/data/modelo_cartas.json alterado pela API do admin; GET /api/cards -> 404; imagem de carta nao gravada em DATA_DIR/assets/cards; GET /assets/avatars/1.jpg -> 404; GET /api/admin/backup -> 404 (admin e jogador); servidor ignora IPC 'shutdown' e nao encerra em 5 s.\n- csp-compat: App.jsx e AdminPanel.jsx escrevem <script> inline no pop-up de impressao.",
+      "lastRunTimestamp": 1791463180108
+    }
+  },
+  "executionHistory": {
+    "1. Escrever os testes exploratórios da condição do bug": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458923417
+      },
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458949987
+      },
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791463256894
+      }
+    ],
+    "2. Escrever os testes de propriedade de preservação (ANTES da correção)": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458923680
+      },
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791463268445
+      }
+    ],
+    "3.1 Criar `server/lib/paths.js` e centralizar os caminhos": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458923890
+      }
+    ],
+    "3.2 Criar `server/lib/atomicWrite.js`": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458924082
+      }
+    ],
+    "3.3 Debounce e `flush()` no `DbWrapper` (`server/db.js`)": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458924275
+      }
+    ],
+    "3.4 Flush no encerramento (`server/index.js`)": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458924451
+      }
+    ],
+    "3.5 Backups: `server/lib/backup.js` e `GET /api/admin/backup`": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458924740
+      }
+    ],
+    "3.6 Seed de `DATA_DIR` (`server/lib/seedData.js`)": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458924982
+      }
+    ],
+    "3.7 `server/lib/cardStore.js` e leitores de cartas": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458925240
+      }
+    ],
+    "3.8 Uploads em `DATA_DIR` e serviço de `/assets/cards` e `/assets/avatars`": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458925808
+      }
+    ],
+    "3.9 Endpoint público `GET /api/cards`": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458926546
+      }
+    ],
+    "3.10 Cartas em tempo de execução no frontend": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458926949
+      }
+    ],
+    "3.11 Plugin de desenvolvimento no Vite (`vite.config.js`)": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458927315
+      }
+    ],
+    "3.12 Blueprint e documentação de deploy": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458927754
+      }
+    ],
+    "3.13 `trust proxy` configurável (`server/middleware/security.js` + `server/index.js`)": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458928216
+      }
+    ],
+    "3.14 Versão de token: migração e middlewares": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458928860
+      }
+    ],
+    "3.15 Troca de senha, reset e exclusão revogam tokens": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458929299
+      }
+    ],
+    "3.16 CORS restrito em produção": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458929564
+      }
+    ],
+    "3.17 Cabeçalhos de segurança e helper de impressão para a CSP": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458929803
+      }
+    ],
+    "3.18 Verificar que os testes exploratórios agora passam": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458929980
+      }
+    ],
+    "3.19 Verificar que os testes de preservação continuam passando": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458930360
+      }
+    ],
+    "4. Checkpoint - Garantir que todos os testes passam": [
+      {
+        "executionId": "009d977e-dbde-48a8-9386-979936049338",
+        "chatSessionId": "sess_5d53ed38-fb73-493e-ab91-deca1db22f87",
+        "timestamp": 1791458930769
+      }
+    ]
+  }
+}

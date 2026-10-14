@@ -9,6 +9,13 @@ server/.admin-credentials.json
 
 server/.test-data-*/
 
+# Dados mutaveis em DATA_DIR quando ele e a propria pasta server/ (dev local):
+# cartas editaveis, imagens enviadas, avatares, backups e temporarios de gravacao
+server/cards/
+server/assets/
+server/backups/
+server/.*.tmp
+
 
 # Anotacoes locais de senha (nunca versionar)
 server/Senha*.txt

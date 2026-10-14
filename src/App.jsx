@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import CARD_DATA from "./data/modelo_cartas.json";
 import "./App.css";
 import { DECK_RULES, attackDefenseAverages, colorBreakdown, colorsSubset, combinedCopies, costCurve, countEntries, createCardIndex, createExportText, normalizeBuild, normalizeSavedDeckIndex, standardDropPile, typeSubtypeBreakdown, validateDeck } from "./lib/deckRules.js";
 import { storage, safeJsonParse } from "./lib/storage.js";
 import { escapeHtml, escapeRegExp, safeCardImagePath, truncateString } from "./lib/sanitize.js";
 import { COLOR_HEX, SUBTYPE_COLORS, DROP_IMAGE_ID, MAX_DECK_NAME_LENGTH } from "./lib/constants.js";
 import { useAuth } from "./hooks/useAuth.js";
+import { useCardData } from "./hooks/useCardData.jsx";
+import { printWhenImagesLoaded } from "./lib/printPopup.js";
 import AuthModal from "./components/AuthModal.jsx";
 import CommunityPage from "./components/CommunityPage.jsx";
 import AdminPanel from "./components/AdminPanel.jsx";
@@ -320,15 +321,18 @@ export default function DeckBuilder() {
   const [catalogSubtype, setCatalogSubtype] = useState("Todos");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, login, register, logout } = useAuth();
-  const cardIndex = useMemo(() => createCardIndex(CARD_DATA.cards), []);
+  // Dados das cartas: GET /api/cards (edições do admin sem novo build), com o
+  // JSON embutido no build como fallback.
+  const { cardData: CARD_DATA, loaded: cardsLoaded } = useCardData();
+  const cardIndex = useMemo(() => createCardIndex(CARD_DATA.cards), [CARD_DATA]);
 
   const alterEgos = useMemo(
     () => CARD_DATA.cards.filter((c) => c.type === "Alter Ego"),
-    []
+    [CARD_DATA]
   );
   const alterEgo = useMemo(
     () => CARD_DATA.cards.find((c) => c.id === alterEgoId) || null,
-    [alterEgoId]
+    [CARD_DATA, alterEgoId]
   );
   const allowedColors = alterEgo ? alterEgo.colors : [];
 
@@ -340,12 +344,12 @@ export default function DeckBuilder() {
         c.type !== "Drop" &&
         colorsSubset(c.colors, allowedColors)
     );
-  }, [alterEgo]);
+  }, [CARD_DATA, alterEgo]);
 
   const availableSubtypes = useMemo(() => {
     if (filterType === "Todos") return [];
     return CARD_DATA.types[filterType]?.subtypes || [];
-  }, [filterType]);
+  }, [CARD_DATA, filterType]);
 
   const filteredPool = useMemo(() => {
     return poolCards.filter((c) => {
@@ -429,7 +433,13 @@ export default function DeckBuilder() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [previewCard]);
   /* --- persistência --- */
+  // A restauração do build salvo espera os dados das cartas da API: com o
+  // índice embutido, normalizeBuild descartaria cartas criadas depois do build.
+  // Roda uma única vez.
+  const restoredBuild = useRef(false);
   useEffect(() => {
+    if (!cardsLoaded || restoredBuild.current) return;
+    restoredBuild.current = true;
     (async () => {
       try {
         const res = await storage.get("current_build");
@@ -460,7 +470,7 @@ export default function DeckBuilder() {
       }
       setReady(true);
     })();
-  }, [cardIndex]);
+  }, [cardsLoaded, cardIndex]);
 
   useEffect(() => {
     if (!ready) return;
@@ -559,7 +569,7 @@ export default function DeckBuilder() {
   const catalogSubtypes = useMemo(() => {
     if (catalogType === "Todos") return [];
     return CARD_DATA.types[catalogType]?.subtypes || [];
-  }, [catalogType]);
+  }, [CARD_DATA, catalogType]);
 
   const filteredCatalog = useMemo(() => {
     return CARD_DATA.cards.filter((c) => {
@@ -569,7 +579,7 @@ export default function DeckBuilder() {
       if (catalogSearch && !c.name.toLowerCase().includes(catalogSearch.toLowerCase())) return false;
       return true;
     });
-  }, [catalogColor, catalogType, catalogSubtype, catalogSearch]);
+  }, [CARD_DATA, catalogColor, catalogType, catalogSubtype, catalogSearch]);
 
   function printProxyPdf(withMargins = true) {
     if (!alterEgo) return;
@@ -718,8 +728,11 @@ export default function DeckBuilder() {
         body { padding: 8mm; background: #ddd; }
         .proxy-page { margin: 0 auto 8mm; background: #fff; box-shadow: 0 2px 10px #777; }
       }
-    </style></head><body>${checklistPage}${cardPages}<script>window.addEventListener('load',()=>Promise.all([...document.images].map(image=>image.complete?Promise.resolve():new Promise(resolve=>{image.onload=image.onerror=resolve}))).then(()=>setTimeout(()=>window.print(),150)))<\/script></body></html>`);
+    </style></head><body>${checklistPage}${cardPages}</body></html>`);
     popup.document.close();
+    // Sem <script> inline no pop-up (a CSP do site bloquearia): a impressao e
+    // disparada daqui quando as imagens carregarem.
+    printWhenImagesLoaded(popup, 150);
   }
   async function copyExport() {
     try {

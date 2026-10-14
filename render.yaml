@@ -2,24 +2,37 @@ services:
   - type: web
     name: forja-alter-egos
     runtime: node
-    plan: free
+    # Disco persistente exige plano pago (Starter). No plano grátis o sistema
+    # de arquivos é efêmero: todo deploy/reinício apagaria o banco (usuários,
+    # decks, torneios, fórum), as cartas e as imagens enviadas.
+    plan: starter
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
+    # Disco persistente com todos os dados mutáveis (banco, segredos gerados,
+    # cartas, imagens de cartas, avatares e backups). Serviço com disco roda
+    # em instância única e sem deploy zero-downtime (alguns segundos fora do
+    # ar a cada deploy).
+    disk:
+      name: forja-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
+      # Diretório de dados = disco persistente acima.
+      - key: DATA_DIR
+        value: /data
+      # O Render coloca 1 proxy na frente do serviço: confiar em 1 salto faz o
+      # rate limit contar pelo IP real de cada cliente.
+      - key: TRUST_PROXY
+        value: "1"
       # JWT_SECRET: o Render gera um valor aleatório seguro sozinho e o
-      # mantém entre reinícios (diferente do disco, variáveis de ambiente
-      # não são apagadas). Sem isso, no plano grátis (disco efêmero), o
-      # servidor geraria um segredo novo a cada reinício e derrubaria o
-      # login de todo mundo.
+      # mantém entre reinícios (variáveis de ambiente não ficam no disco).
       - key: JWT_SECRET
         generateValue: true
       # ADMIN_PASSWORD: o Render vai pedir pra você digitar esse valor no
-      # painel ao criar o serviço (não fica salvo neste arquivo). Pelo
-      # mesmo motivo do JWT_SECRET: no plano grátis, sem isso, a senha do
-      # admin gerada automaticamente mudaria a cada reinício.
+      # painel ao criar o serviço (não fica salvo neste arquivo).
       - key: ADMIN_PASSWORD
         sync: false
       # E-mail de recuperacao de senha (Resend). Sem isso o link so aparece
@@ -32,5 +45,7 @@ services:
         sync: false
       # SITE_URL e opcional no Render: sem ela, o link usa RENDER_EXTERNAL_URL.
       # Defina se usar um dominio proprio (ex: https://forjadealteregos.com.br).
+      # Tambem define a origem aceita pelo CORS em producao (junto com
+      # RENDER_EXTERNAL_URL), a menos que ALLOWED_ORIGINS seja definido.
       - key: SITE_URL
         sync: false

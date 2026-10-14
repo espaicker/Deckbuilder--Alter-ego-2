@@ -76,6 +76,13 @@ export const api = {
   forgotPassword: (email) => request("POST", "/auth/forgot-password", { email }),
   resetPassword: (token, newPassword) => request("POST", "/auth/reset-password", { token, newPassword }),
   updateEmail: (email, currentPassword) => request("PATCH", "/auth/me/email", { email, currentPassword }),
+  // Troca de senha: invalida as outras sessoes e devolve um token novo, que
+  // passa a ser o desta sessao.
+  changePassword: async (currentPassword, newPassword) => {
+    const data = await request("POST", "/auth/change-password", { currentPassword, newPassword });
+    if (data.token) setToken(data.token);
+    return data;
+  },
 
   // Decks
   getCommunityDecks: () => request("GET", "/decks/community"),

@@ -1,17 +1,9 @@
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-// Mesma variável DATA_DIR usada em db.js — mantém tudo junto no mesmo
-// disco persistente quando configurado em produção.
-const DATA_DIR = process.env.DATA_DIR || __dirname;
-
-const JWT_SECRET_PATH = join(DATA_DIR, ".jwt-secret");
-const ADMIN_CREDENTIALS_PATH = join(DATA_DIR, ".admin-credentials.json");
+// Mesmo DATA_DIR usado pelo banco (server/lib/paths.js) — mantém tudo junto
+// no mesmo disco persistente quando configurado em produção.
+import { JWT_SECRET_PATH, ADMIN_CREDENTIALS_PATH, ensureDataDir } from "./lib/paths.js";
 
 /**
  * Segredo usado para assinar os tokens de login (JWT).
@@ -36,6 +28,7 @@ export function getJwtSecret() {
   }
 
   const generated = randomBytes(48).toString("hex");
+  ensureDataDir();
   writeFileSync(JWT_SECRET_PATH, generated, "utf-8");
   console.log("[server] Gerado um novo segredo de assinatura de login (server/.jwt-secret).");
   return generated;
@@ -67,6 +60,7 @@ export function getAdminCredentials() {
 
   const generatedPassword = randomBytes(9).toString("base64url"); // ~12 caracteres, só letras/números
   const passwordHash = bcrypt.hashSync(generatedPassword, 10);
+  ensureDataDir();
   writeFileSync(
     ADMIN_CREDENTIALS_PATH,
     JSON.stringify({ username, passwordHash }, null, 2),

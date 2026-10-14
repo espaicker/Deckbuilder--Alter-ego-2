@@ -1,14 +1,15 @@
 import { Router } from "express";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
-import { existsSync, mkdirSync, unlinkSync, readFileSync } from "fs";
+import { existsSync, mkdirSync, unlinkSync } from "fs";
 import multer from "multer";
 import sharp from "sharp";
-import { fileURLToPath } from "url";
-import { dirname, join, extname } from "path";
+import { join } from "path";
+import { AVATARS_DIR } from "../lib/paths.js";
+import { readCardData } from "../lib/cardStore.js";
+import { writeFileAtomicSync } from "../lib/atomicWrite.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const AVATAR_DIR = join(__dirname, "../../public/assets/avatars");
+// Avatares enviados ficam em DATA_DIR/assets/avatars (servidos em /assets/avatars).
+const AVATAR_DIR = AVATARS_DIR;
 const AVATAR_SIZE = 256; // px, square crop
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 
@@ -106,9 +107,8 @@ router.get("/:username", optionalAuth, (req, res) => {
     let totalCards = 0;
 
     // Load card data for type analysis
-    const cardsJsonPath = join(__dirname, "../../src/data/modelo_cartas.json");
     let cardData = { cards: [] };
-    try { cardData = JSON.parse(readFileSync(cardsJsonPath, "utf8")); } catch {}
+    try { cardData = readCardData(); } catch {}
     const cardIndex = new Map(cardData.cards.map(c => [c.id, c]));
 
     for (const deck of decks) {
@@ -216,8 +216,7 @@ router.post("/avatar", requireAuth, upload.single("avatar"), async (req, res) =>
     });
 
     // Salva JPEG reprocessado (nunca o original)
-    const { writeFileSync } = await import("fs");
-    writeFileSync(filepath, processed);
+    writeFileAtomicSync(filepath, processed);
 
     const avatarUrl = `/assets/avatars/${filename}`;
     req.db.prepare("UPDATE users SET avatar_url = ? WHERE id = ?").run(avatarUrl, req.user.id);

@@ -1,18 +1,33 @@
 import { Router } from "express";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "fs";
+import { existsSync, mkdirSync, unlinkSync } from "fs";
 import multer from "multer";
 import sharp from "sharp";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { join } from "path";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../middleware/auth.js";
+import { CARDS_IMG_DIR } from "../lib/paths.js";
+import { readCardData, writeCardData } from "../lib/cardStore.js";
+import { writeFileAtomicSync } from "../lib/atomicWrite.js";
 
 const router = Router();
 const uploadImage = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const CARDS_JSON_PATH = join(__dirname, "../../src/data/modelo_cartas.json");
+/**
+ * Router publico montado em /api/cards: entrega os dados atuais das cartas
+ * (DATA_DIR) para o frontend, sem exigir novo build apos edicoes do admin.
+ * Sem autenticacao: os mesmos dados ja vao embutidos no bundle.
+ */
+export const publicCardsRouter = Router();
+
+publicCardsRouter.get("/", (req, res) => {
+  try {
+    res.set("Cache-Control", "no-cache");
+    res.json(readCardData());
+  } catch (err) {
+    console.error("[cards] public list error:", err);
+    res.status(500).json({ error: "Erro ao buscar cartas." });
+  }
+});
 
 function requireAdmin(req, res, next) {
   const header = req.headers.authorization;
@@ -31,20 +46,13 @@ function requireAdmin(req, res, next) {
   }
 }
 
-function readCardsData() {
-  return JSON.parse(readFileSync(CARDS_JSON_PATH, "utf-8"));
-}
-
-function writeCardsData(data) {
-  writeFileSync(CARDS_JSON_PATH, JSON.stringify(data, null, 2), "utf-8");
-}
 
 /**
  * GET /api/admin/cards — Lista todas as cartas + metadados do JSON
  */
 router.get("/", requireAdmin, (req, res) => {
   try {
-    const data = readCardsData();
+    const data = readCardData();
     res.json({
       cards: data.cards,
       meta: {
@@ -80,7 +88,7 @@ router.post("/", requireAdmin, (req, res) => {
       return res.status(400).json({ error: "Pelo menos uma cor é obrigatória." });
     }
 
-    const data = readCardsData();
+    const data = readCardData();
 
     // Verifica se ID já existe
     if (data.cards.some((c) => c.id === id.trim())) {
@@ -106,7 +114,7 @@ router.post("/", requireAdmin, (req, res) => {
     };
 
     data.cards.push(card);
-    writeCardsData(data);
+    writeCardData(data);
 
     res.status(201).json({ message: `Carta "${card.name}" adicionada com sucesso!`, card });
   } catch (err) {
@@ -123,7 +131,7 @@ router.put("/:id", requireAdmin, (req, res) => {
     const cardId = req.params.id;
     const { name, type, subtype, colors, cost, attributes, effect, keywords } = req.body || {};
 
-    const data = readCardsData();
+    const data = readCardData();
     const index = data.cards.findIndex((c) => c.id === cardId);
     if (index === -1) {
       return res.status(404).json({ error: "Carta não encontrada." });
@@ -142,7 +150,7 @@ router.put("/:id", requireAdmin, (req, res) => {
     if (effect !== undefined) data.cards[index].effect = effect && effect.trim() ? effect.trim() : null;
     if (keywords !== undefined) data.cards[index].keywords = Array.isArray(keywords) ? keywords : [];
 
-    writeCardsData(data);
+    writeCardData(data);
 
     res.json({ message: `Carta "${data.cards[index].name}" atualizada.`, card: data.cards[index] });
   } catch (err) {
@@ -157,21 +165,19 @@ router.put("/:id", requireAdmin, (req, res) => {
 router.delete("/:id", requireAdmin, (req, res) => {
   try {
     const cardId = req.params.id;
-    const data = readCardsData();
+    const data = readCardData();
     const index = data.cards.findIndex((c) => c.id === cardId);
     if (index === -1) {
       return res.status(404).json({ error: "Carta não encontrada." });
     }
     const removed = data.cards.splice(index, 1)[0];
-    writeCardsData(data);
+    writeCardData(data);
     res.json({ message: `Carta "${removed.name}" removida.` });
   } catch (err) {
     console.error("[admin/cards] delete error:", err);
     res.status(500).json({ error: "Erro ao remover carta." });
   }
 });
-
-const CARDS_IMG_DIR = join(__dirname, "../../public/assets/cards");
 
 /**
  * POST /api/admin/cards/:id/image - upload de imagem da carta.
@@ -181,7 +187,7 @@ const CARDS_IMG_DIR = join(__dirname, "../../public/assets/cards");
 router.post("/:id/image", requireAdmin, uploadImage.single("image"), async (req, res) => {
   try {
     const cardId = req.params.id;
-    const data = readCardsData();
+    const data = readCardData();
     if (!data.cards.some((c) => c.id === cardId)) {
       return res.status(404).json({ error: "Carta nao encontrada." });
     }
@@ -202,7 +208,7 @@ router.post("/:id/image", requireAdmin, uploadImage.single("image"), async (req,
       if (existsSync(old)) { try { unlinkSync(old); } catch {} }
     });
     const filename = cardId + ".jpg";
-    writeFileSync(join(CARDS_IMG_DIR, filename), processed);
+    writeFileAtomicSync(join(CARDS_IMG_DIR, filename), processed);
     res.json({ message: "Imagem salva!", filename });
   } catch (err) {
     console.error("[admin/cards] image upload error:", err);

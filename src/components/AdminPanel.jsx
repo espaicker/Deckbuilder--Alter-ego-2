@@ -4,6 +4,7 @@ import { safeCardImagePath, escapeHtml } from "../lib/sanitize.js";
 import AnalyticsPanel from "./AnalyticsPanel.jsx";
 import { countEntries } from "../lib/deckRules.js";
 import { api } from "../lib/api.js";
+import { printWhenImagesLoaded } from "../lib/printPopup.js";
 
 const ADMIN_API = "/api/admin";
 
@@ -307,10 +308,11 @@ function printFullCollectionPdf(cards, colors, flash) {
     '.checklist-note { position: absolute; bottom: 12mm; left: 0; right: 0; font-size: 3mm; color: #999; }' +
     '@media screen { body { padding: 8mm; background: #ddd; } .proxy-page { margin: 0 auto 8mm; background: #fff; box-shadow: 0 2px 10px #777; } }';
 
-  const loader = '<' + 'script>window.addEventListener("load",function(){Promise.all([].slice.call(document.images).map(function(image){return image.complete?Promise.resolve():new Promise(function(resolve){image.onload=image.onerror=resolve;});})).then(function(){setTimeout(function(){window.print();},200);});});<' + '/script>';
-
-  popup.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Colecao completa - proxies</title><style>' + styles + '</style></head><body>' + summaryPage + cardPages + loader + '</body></html>');
+  popup.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Colecao completa - proxies</title><style>' + styles + '</style></head><body>' + summaryPage + cardPages + '</body></html>');
   popup.document.close();
+  // Sem <script> inline no pop-up (a CSP do site bloquearia): a impressao e
+  // disparada daqui quando as imagens carregarem.
+  printWhenImagesLoaded(popup, 200);
 }
 
 function CardManager({ cards, meta, onReload, flash }) {
@@ -864,6 +866,7 @@ export default function AdminPanel({ embedded = false }) {
   const [pendingStores, setPendingStores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
 
   // Check existing token
   useEffect(() => {
@@ -892,6 +895,37 @@ export default function AdminPanel({ embedded = false }) {
   function flash(msg) {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
+  }
+
+  // Baixa uma copia do banco (GET /api/admin/backup) para guardar fora do servidor.
+  async function downloadBackup() {
+    setDownloadingBackup(true);
+    try {
+      const token = getAdminToken();
+      const res = await fetch(`${ADMIN_API}/backup`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Erro ${res.status}`);
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1] || "deckbuilder-backup.db";
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      flash("Backup do banco baixado.");
+    } catch (err) {
+      flash("Erro ao baixar backup: " + (err.message || "tente novamente."));
+    } finally {
+      setDownloadingBackup(false);
+    }
   }
 
   async function loadStats() {
@@ -1037,7 +1071,17 @@ export default function AdminPanel({ embedded = false }) {
       </nav>
 
       <main className="ab-main ab-admin-main">
-        {tab === "stats" && <StatsPanel stats={stats} />}
+        {tab === "stats" && (
+          <>
+            <StatsPanel stats={stats} />
+            <div className="ab-admin-cards-header" style={{ marginTop: "16px" }}>
+              <h3 className="ab-sidebar-group-title">Backup</h3>
+              <button className="ab-btn ab-btn-ghost" onClick={downloadBackup} disabled={downloadingBackup}>
+                {downloadingBackup ? "Gerando backup…" : "Baixar backup do banco"}
+              </button>
+            </div>
+          </>
+        )}
         {tab === "users" && <UsersTable users={users} onDelete={deleteUser} onToggleJudge={toggleJudge} loading={loading} />}
         {tab === "decks" && <DecksTable decks={decks} onDelete={deleteDeck} loading={loading} />}
         {tab === "cards" && <CardManager cards={cards} meta={cardMeta} onReload={loadCards} flash={flash} />}

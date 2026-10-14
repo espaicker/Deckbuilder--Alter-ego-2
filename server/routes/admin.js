@@ -5,11 +5,8 @@ import jwt from "jsonwebtoken";
 import { JWT_SECRET, JWT_EXPIRES_IN } from "../middleware/auth.js";
 import { getAdminCredentials } from "../secrets.js";
 import { adminLoginLimiter } from "../middleware/rateLimit.js";
-
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { readCardData } from "../lib/cardStore.js";
+import { snapshotFileName } from "../lib/backup.js";
 
 const router = Router();
 
@@ -322,14 +319,9 @@ router.get("/analytics/meta", requireAdmin, async (req, res) => {
       draws: r.draws || 0,
     }));
 
-    const { join } = await import("path");
-    const { readFileSync } = await import("fs");
     let cardIndex = new Map();
     try {
-      const { fileURLToPath: fu } = await import("url");
-      const { dirname: dn } = await import("path");
-      const cardsPath = join(dn(fu(import.meta.url)), "../../src/data/modelo_cartas.json");
-      const cardsData = JSON.parse(readFileSync(cardsPath, "utf8"));
+      const cardsData = readCardData();
       cardIndex = new Map(cardsData.cards.map(c2 => [c2.id, c2]));
     } catch {}
 
@@ -416,6 +408,26 @@ router.post("/stores/:id/reject", requireAdmin, (req, res) => {
   } catch (err) {
     console.error("[admin] stores/reject error:", err);
     res.status(500).json({ error: "Erro ao rejeitar loja." });
+  }
+});
+
+/**
+ * GET /api/admin/backup — baixa uma copia consistente do banco (inclui
+ * escritas ainda nao gravadas em disco). Guarde a copia fora do servidor.
+ */
+router.get("/backup", requireAdmin, (req, res) => {
+  try {
+    const data = req.db.serialize();
+    res.set({
+      "Content-Type": "application/vnd.sqlite3",
+      "Content-Disposition": `attachment; filename="${snapshotFileName(new Date())}"`,
+      "Cache-Control": "no-store",
+    });
+    console.log("[admin] Backup do banco baixado.");
+    res.end(Buffer.from(data));
+  } catch (err) {
+    console.error("[admin] backup error:", err?.code || err?.message || err);
+    res.status(500).json({ error: "Erro ao gerar backup do banco." });
   }
 });
 

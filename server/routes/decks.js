@@ -1,26 +1,21 @@
 import { Router } from "express";
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import { validateDeck, createCardIndex, standardDropPile } from "../../src/lib/deckRules.js";
+import { readCardData } from "../lib/cardStore.js";
 
 const router = Router();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const CARDS_JSON_PATH = join(__dirname, "../../src/data/modelo_cartas.json");
 
 const MAX_NAME_LENGTH = 80;
 const MAX_DESCRIPTION_LENGTH = 500;
 
 /**
- * Carrega o banco de cartas do disco a cada chamada (mesmo padrão usado em
- * routes/cards.js) e monta o índice + a lista de cores válidas do jogo,
- * usados para validar decks publicados com as MESMAS regras do front-end.
+ * Carrega o banco de cartas do disco a cada chamada (a mesma fonte em
+ * DATA_DIR usada pela administração de cartas) e monta o índice + a lista de
+ * cores válidas do jogo, usados para validar decks publicados com as MESMAS
+ * regras do front-end.
  */
 function loadCardData() {
-  const data = JSON.parse(readFileSync(CARDS_JSON_PATH, "utf-8"));
+  const data = readCardData();
   return { cardIndex: createCardIndex(data.cards), colors: data.colors };
 }
 

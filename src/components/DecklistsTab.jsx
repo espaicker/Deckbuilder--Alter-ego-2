@@ -2,11 +2,26 @@ import { useState, useEffect, useMemo } from "react";
 import { api } from "../lib/api.js";
 import { COLOR_HEX } from "../lib/constants.js";
 import { DECK_RULES, countEntries, createCardIndex, colorBreakdown, costCurve, attackDefenseAverages, standardDropPile } from "../lib/deckRules.js";
-import CARD_DATA from "../data/modelo_cartas.json";
+import { useCardData } from "../hooks/useCardData.jsx";
 
-const cardIndex = createCardIndex(CARD_DATA.cards);
+// Índice das cartas atuais (GET /api/cards, com o JSON do build como
+// fallback). Calculado uma vez por versão dos dados e compartilhado entre os
+// componentes desta aba.
+let cachedIndex = { data: null, index: null };
+function indexFor(cardData) {
+  if (cachedIndex.data !== cardData) {
+    cachedIndex = { data: cardData, index: createCardIndex(cardData.cards) };
+  }
+  return cachedIndex.index;
+}
+
+function useCardIndex() {
+  const { cardData } = useCardData();
+  return useMemo(() => indexFor(cardData), [cardData]);
+}
 
 function DeckColorDots({ alterEgoId }) {
+  const cardIndex = useCardIndex();
   const ae = cardIndex.get(alterEgoId);
   if (!ae) return null;
   return (
@@ -19,6 +34,7 @@ function DeckColorDots({ alterEgoId }) {
 }
 
 function DeckCard({ deck, onSelect, isSelected, onCompare, user }) {
+  const cardIndex = useCardIndex();
   const ae = cardIndex.get(deck.alter_ego_id);
   const mainCount = countEntries(deck.main_deck || {});
   const sideCount = countEntries(deck.sideboard || {});
@@ -49,7 +65,7 @@ function DeckCard({ deck, onSelect, isSelected, onCompare, user }) {
   );
 }
 
-function groupByType(entries) {
+function groupByType(entries, cardIndex) {
   const groups = {};
   Object.entries(entries).forEach(([id, qty]) => {
     const card = cardIndex.get(id);
@@ -79,6 +95,7 @@ function CardGroups({ groups }) {
 }
 
 function DeckDetails({ deck, onClose, onCompare }) {
+  const cardIndex = useCardIndex();
   const ae = cardIndex.get(deck.alter_ego_id);
   const mainDeck = deck.main_deck || {};
   const sideboard = deck.sideboard || {};
@@ -90,8 +107,8 @@ function DeckDetails({ deck, onClose, onCompare }) {
   const cost = costCurve(mainDeck, cardIndex);
   const combat = attackDefenseAverages(mainDeck, cardIndex);
 
-  const groups = groupByType(mainDeck);
-  const sideGroups = groupByType(sideboard);
+  const groups = groupByType(mainDeck, cardIndex);
+  const sideGroups = groupByType(sideboard, cardIndex);
 
   return (
     <div className="ab-community-detail">
@@ -152,6 +169,7 @@ function DeckDetails({ deck, onClose, onCompare }) {
 }
 
 function CompareView({ deckA, deckB, onClose, allDecks }) {
+  const cardIndex = useCardIndex();
   const [selectedB, setSelectedB] = useState(deckB);
 
   const statsA = useMemo(() => {
@@ -166,7 +184,7 @@ function CompareView({ deckA, deckB, onClose, allDecks }) {
       combat: attackDefenseAverages(md, cardIndex),
       ae: cardIndex.get(deckA.alter_ego_id),
     };
-  }, [deckA]);
+  }, [deckA, cardIndex]);
 
   const statsB = useMemo(() => {
     if (!selectedB) return null;
@@ -180,7 +198,7 @@ function CompareView({ deckA, deckB, onClose, allDecks }) {
       combat: attackDefenseAverages(md, cardIndex),
       ae: cardIndex.get(selectedB.alter_ego_id),
     };
-  }, [selectedB]);
+  }, [selectedB, cardIndex]);
 
   const otherDecks = allDecks.filter((d) => d.id !== deckA?.id);
 
@@ -355,6 +373,7 @@ function PublishForm({ alterEgo, mainDeck, sideboard, onPublish, onCancel }) {
 }
 
 export default function CommunityTab({ user, alterEgo, mainDeck, sideboard, flashToast, onRequestLogin }) {
+  const cardIndex = useCardIndex();
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("list"); // list | detail | compare | publish

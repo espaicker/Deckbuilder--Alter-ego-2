@@ -137,9 +137,23 @@ test("E2E LGPD - protecao de dados", async (t) => {
     // bob nao consegue ver dados da alice via export (so os proprios)
     const { data: bobData } = await req("GET", "/api/auth/me/export", undefined, bobToken);
     assert.equal(bobData.account.username, "bob");
-    // alice nao consegue mais usar o token? token ainda valido por 7d, mas conta anonimizada:
-    const { data: aliceExport } = await req("GET", "/api/auth/me/export", undefined, aliceToken);
-    assert.equal(aliceExport.account.email, null, "email deve ter sido apagado");
+    // A exclusao da conta revoga as sessoes abertas (requisito 2.16): o token
+    // antigo da alice nao vale mais, com mensagem em pt-BR.
+    const aliceExport = await req("GET", "/api/auth/me/export", undefined, aliceToken);
+    assert.equal(aliceExport.status, 401, "token antigo deve ser rejeitado apos a exclusao da conta");
+    assert.match(aliceExport.data?.error ?? "", /sess[aã]o|login|token/i);
+    // Anonimizacao conferida por outros caminhos: o admin ve a conta como
+    // "Usuario removido #<id>" (sem "alice")...
+    const aliceId = JSON.parse(Buffer.from(aliceToken.split(".")[1], "base64url").toString("utf-8")).sub;
+    const admin = await req("POST", "/api/admin/login", { username: "admin", password: "test-admin-lgpd" });
+    assert.equal(admin.status, 200, JSON.stringify(admin.data));
+    const { data: users } = await req("GET", "/api/admin/users", undefined, admin.data.token);
+    const anonymized = users.find((u) => u.id === aliceId);
+    assert.equal(anonymized?.username, `Usuario removido #${aliceId}`);
+    assert.ok(!users.some((u) => u.username === "alice"), "username original nao deve continuar no banco");
+    // ...e o e-mail foi apagado de verdade: ele fica livre para um novo cadastro.
+    const reuse = await register("novaalice", { email: "alice@teste.com" });
+    assert.equal(reuse.status, 201, `email deve ter sido apagado: ${JSON.stringify(reuse.data)}`);
   });
 
   stopServer();
